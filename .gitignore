@@ -1,0 +1,28 @@
+# go
+go.work
+*.exe
+*.test
+
+# wails
+build/
+wailsjs/
+*.syso
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# database
+*.db
+*.db-shm
+*.db-wal
+
+# документация
+docs/commit-style-guide.md
+
+# прочее
+.vscode/
+.idea/
+*.out
+vendor/
+*.log
