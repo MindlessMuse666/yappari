@@ -4,18 +4,14 @@
       <button @click="goBack" class="icon-btn" title="Назад">
         <span class="icon">←</span>
       </button>
-      <InputText 
-        v-model="deckName" 
-        @keyup.enter="updateDeckName" 
-        placeholder="Название колоды" 
-        class="deck-name-input"
-      />
+      <InputText v-model="deckName" @keyup.enter="updateDeckName" placeholder="Название колоды"
+        class="deck-name-input" />
       <div class="header-actions">
         <button @click="resetDeckProgress" class="secondary-btn" title="Сбросить прогресс">
-          <span class="icon">🔄</span>
+          Сбросить
         </button>
         <button @click="deleteDeck" class="danger-btn" title="Удалить колоду">
-          <span class="icon">🗑️</span>
+          Удалить
         </button>
       </div>
     </div>
@@ -31,63 +27,38 @@
       <p>В этой колоде пока нет карточек. Добавь первую!</p>
     </div>
 
-    <DataTable 
-      v-else 
-      :value="cards" 
-      paginator 
-      :rows="10" 
-      class="custom-table"
-      :paginatorTemplate="{'FirstPageLink': '', 'LastPageLink': '', 'PageLinks': 'PageLinks', 'PrevPageLink': 'PrevPageLink', 'NextPageLink': 'NextPageLink', 'RowsPerPageDropdown': '', 'CurrentPageReport': 'CurrentPageReport'}"
-    >
-      <Column field="KanjiText" header="Японский" class="kanji-col"></Column>
-      <Column field="Translation" header="Перевод"></Column>
-      <Column header="Действия" style="width: 150px">
-        <template #body="slotProps">
-          <div class="actions-cell">
-            <button @click="editCard(slotProps.data)" class="icon-btn small" title="Редактировать">
-              <span class="icon">✏️</span>
-            </button>
-            <button @click="deleteCard(slotProps.data.ID)" class="icon-btn small danger" title="Удалить">
-              <span class="icon">🗑️</span>
-            </button>
-          </div>
-        </template>
-      </Column>
-    </DataTable>
+    <div v-else class="cards-grid">
+      <div v-for="card in cards" :key="card.ID" class="card-item" @click="editCard(card)">
+        <div class="card-main">
+          <FuriganaText :KanjiText="card.KanjiText" :FuriganaText="card.FuriganaText" />
+        </div>
+        <div class="card-translation">
+          <FuriganaText :KanjiText="card.Translation" Language="ru" />
+        </div>
+        <button @click.stop="deleteCard(card.ID)" class="card-delete-btn" title="Удалить">
+          ×
+        </button>
+      </div>
+    </div>
 
-    <Dialog 
-      v-model:visible="cardFormModalVisible" 
-      :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'" 
-      class="custom-dialog"
-    >
-      <div class="form-content">
+    <Dialog v-model:visible="cardFormModalVisible" :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
+      class="custom-dialog" :closable="false">
+      <div class="form-content" :class="{ 'shake': shake }">
         <div class="input-group">
-          <label for="kanji-text">Японское слово *</label>
-          <InputText 
-            id="kanji-text"
-            v-model="cardForm.KanjiText" 
-            placeholder="Например: 食べる" 
-            class="custom-input"
-          />
+          <label for="kanji-text">Японское слово <span class="required-asterisk">*</span></label>
+          <InputText id="kanji-text" v-model="cardForm.KanjiText" placeholder="Введите японское слово"
+            class="custom-input" :class="{ 'input-error': errors.kanjiText }" />
           <div v-if="errors.kanjiText" class="error">{{ errors.kanjiText }}</div>
         </div>
         <div class="input-group">
           <label for="furigana-text">Чтение (фуригана)</label>
-          <InputText 
-            id="furigana-text"
-            v-model="cardForm.FuriganaText" 
-            placeholder="Например: たべる" 
-            class="custom-input"
-          />
+          <InputText id="furigana-text" v-model="cardForm.FuriganaText" placeholder="Введите чтение"
+            class="custom-input" />
         </div>
         <div class="input-group">
-          <label for="translation">Перевод *</label>
-          <InputText 
-            id="translation"
-            v-model="cardForm.Translation" 
-            placeholder="Например: есть" 
-            class="custom-input"
-          />
+          <label for="translation">Перевод <span class="required-asterisk">*</span></label>
+          <InputText id="translation" v-model="cardForm.Translation" placeholder="Введите перевод" class="custom-input"
+            :class="{ 'input-error': errors.translation }" />
           <div v-if="errors.translation" class="error">{{ errors.translation }}</div>
         </div>
       </div>
@@ -105,14 +76,15 @@ import { useRouter, useRoute } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import type { Deck, Card, CardInput } from '../types'
 import { useWails } from '../composables/useWails'
+import { useAlert } from '../composables/useAlert'
+import FuriganaText from '../components/FuriganaText.vue'
 
 const router = useRouter()
 const route = useRoute()
 const { getDecks, getCardsByDeck, updateDeck, resetDeckProgress: resetDeckProgressWails, deleteDeck: deleteDeckWails, createCard: createCardWails, updateCard: updateCardWails, deleteCard: deleteCardWails } = useWails()
+const { alert } = useAlert()
 const deckId = Number(route.params.id)
 const deckName = ref('')
 const cards = ref<Card[]>([])
@@ -124,6 +96,7 @@ const cardForm = ref({
   Translation: ''
 })
 const errors = ref({ kanjiText: '', translation: '' })
+const shake = ref(false)
 
 onMounted(async () => {
   await loadDeck()
@@ -139,7 +112,7 @@ const loadDeck = async () => {
     }
   } catch (e) {
     console.error('Ошибка загрузки колоды:', e)
-    alert('Не удалось загрузить колоду: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоду: ' + e })
   }
 }
 
@@ -148,7 +121,7 @@ const loadCards = async () => {
     cards.value = await getCardsByDeck(deckId)
   } catch (e) {
     console.error('Ошибка загрузки карточек:', e)
-    alert('Не удалось загрузить карточки: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось загрузить карточки: ' + e })
   }
 }
 
@@ -162,7 +135,7 @@ const updateDeckName = async () => {
     await updateDeck(deckId, deckName.value)
   } catch (e) {
     console.error('Ошибка обновления названия:', e)
-    alert('Не удалось обновить название: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось обновить название: ' + e })
   }
 }
 
@@ -170,10 +143,10 @@ const resetDeckProgress = async () => {
   if (!confirm('Сбросить прогресс всей колоды?')) return
   try {
     await resetDeckProgressWails(deckId)
-    alert('Прогресс успешно сброшен!')
+    await alert({ title: 'Успешно', message: 'Прогресс успешно сброшен!' })
   } catch (e) {
     console.error('Ошибка сброса прогресса:', e)
-    alert('Не удалось сбросить прогресс: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось сбросить прогресс: ' + e })
   }
 }
 
@@ -184,24 +157,33 @@ const deleteDeck = async () => {
     router.push({ name: 'Home' })
   } catch (e) {
     console.error('Ошибка удаления колоды:', e)
-    alert('Не удалось удалить колоду: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось удалить колоду: ' + e })
   }
+}
+
+const triggerShake = () => {
+  shake.value = true
+  setTimeout(() => {
+    shake.value = false
+  }, 500)
 }
 
 const validateCardForm = (): boolean => {
   errors.value = { kanjiText: '', translation: '' }
   let valid = true
-  
+
   if (!cardForm.value.KanjiText.trim()) {
-    errors.value.kanjiText = 'Японское слово обязательно'
+    errors.value.kanjiText = 'Поле не может быть пустым!'
     valid = false
+    triggerShake()
   }
-  
+
   if (!cardForm.value.Translation.trim()) {
-    errors.value.translation = 'Перевод обязателен'
+    errors.value.translation = 'Поле не может быть пустым!'
     valid = false
+    triggerShake()
   }
-  
+
   return valid
 }
 
@@ -222,7 +204,7 @@ const deleteCard = async (id: number) => {
     await loadCards()
   } catch (e) {
     console.error('Ошибка удаления карточки:', e)
-    alert('Не удалось удалить карточку: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось удалить карточку: ' + e })
   }
 }
 
@@ -247,7 +229,7 @@ const saveCard = async () => {
     await loadCards()
   } catch (e) {
     console.error('Ошибка сохранения карточки:', e)
-    alert('Не удалось сохранить карточку: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось сохранить карточку: ' + e })
   }
 }
 
@@ -278,8 +260,7 @@ const closeCardModal = () => {
   flex: 1;
   min-width: 200px;
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid #333333;
+  border-radius: 0.75rem;
   background: #111111;
   color: white;
   font-family: inherit;
@@ -289,8 +270,13 @@ const closeCardModal = () => {
   transition: all 0.2s;
 }
 
-.deck-name-input:focus {
-  border-color: #ff0a14;
+:deep(.deck-name-input.p-inputtext) {
+  border: 1px solid #c7cdd8;
+}
+
+:deep(.deck-name-input.p-inputtext:focus) {
+  border-color: #ffffff;
+  box-shadow: none;
 }
 
 .header-actions {
@@ -309,58 +295,57 @@ const closeCardModal = () => {
   font-size: 1.1rem;
 }
 
-.custom-table {
-  border-radius: 0.75rem;
-  overflow: hidden;
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.card-item {
+  background: #111111;
   border: 1px solid #222222;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-:deep(.custom-table .p-datatable-thead > tr > th) {
-  background: #1a1a1a !important;
-  color: white !important;
-  border: 1px solid #222222 !important;
-  font-weight: 600;
+.card-item:hover {
+  border-color: #ff0a14;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 10, 20, 0.1);
 }
 
-:deep(.custom-table .p-datatable-tbody > tr > td) {
-  background: #111111 !important;
-  color: white !important;
-  border: 1px solid #222222 !important;
-}
-
-:deep(.custom-table .p-paginator) {
-  background: #111111 !important;
-  border: none !important;
-  padding: 1rem;
-}
-
-:deep(.custom-table .p-paginator .p-paginator-page),
-:deep(.custom-table .p-paginator .p-paginator-prev),
-:deep(.custom-table .p-paginator .p-paginator-next) {
-  background: transparent !important;
-  border: none !important;
-  color: white !important;
-}
-
-:deep(.custom-table .p-paginator .p-paginator-page.p-highlight) {
-  background: #ff0a14 !important;
-  border-radius: 0.5rem !important;
-}
-
-:deep(.custom-table .p-paginator .p-paginator-page:hover),
-:deep(.custom-table .p-paginator .p-paginator-prev:hover),
-:deep(.custom-table .p-paginator .p-paginator-next:hover) {
-  background: #222222 !important;
-}
-
-.kanji-col {
+.card-main {
   font-family: 'Noto Sans JP', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
+  color: white;
+  margin-bottom: 0.5rem;
 }
 
-.actions-cell {
-  display: flex;
-  gap: 0.5rem;
+.card-translation {
+  color: #c7cdd8;
+  font-size: 1rem;
+}
+
+.card-delete-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.card-delete-btn:hover {
+  color: #ff4444;
+  background: rgba(255, 68, 68, 0.1);
 }
 
 .form-content {
@@ -368,6 +353,26 @@ const closeCardModal = () => {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .input-group {
@@ -382,11 +387,15 @@ const closeCardModal = () => {
   font-weight: 500;
 }
 
+.required-asterisk {
+  color: #ff0a14;
+}
+
 .custom-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid #333333;
+  border-radius: 0.75rem;
+  border: 1px solid #c7cdd8;
   background: #111111;
   color: white;
   font-family: inherit;
@@ -395,8 +404,16 @@ const closeCardModal = () => {
   transition: all 0.2s;
 }
 
+.custom-input::placeholder {
+  color: #555555;
+}
+
 .custom-input:focus {
-  border-color: #ff0a14;
+  border-color: #ffffff;
+}
+
+.custom-input.input-error {
+  border-color: #ff0a14 !important;
 }
 
 .error {
@@ -409,32 +426,22 @@ const closeCardModal = () => {
   background: transparent;
   border: 1px solid #333333;
   color: #c7cdd8;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem 0.75rem;
+  border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 48px;
+  text-align: center;
 }
 
 .icon-btn:hover {
   background: #1a1a1a;
   border-color: #ff0a14;
   color: #ffffff;
-}
-
-.icon-btn.small {
-  padding: 0.4rem 0.6rem;
-}
-
-.icon-btn.small .icon {
-  font-size: 1rem;
-}
-
-.icon-btn.danger:hover {
-  border-color: #ff4444;
-  color: #ff4444;
+  transform: translateY(-2px);
 }
 
 .icon {
@@ -446,20 +453,23 @@ const closeCardModal = () => {
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   cursor: pointer;
   font-family: inherit;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  height: 48px;
+  text-align: center;
 }
 
 .primary-btn:hover {
   background-color: #e00912;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .secondary-btn {
@@ -467,15 +477,24 @@ const closeCardModal = () => {
   color: white;
   border: 1px solid #333333;
   padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   cursor: pointer;
   font-family: inherit;
   font-size: 1rem;
+  font-weight: 600;
   transition: all 0.2s;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
 }
 
 .secondary-btn:hover {
   background-color: #333333;
+  border-color: #ff0a14;
+  transform: translateY(-2px);
 }
 
 .danger-btn {
@@ -483,52 +502,95 @@ const closeCardModal = () => {
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   cursor: pointer;
   font-family: inherit;
   font-size: 1rem;
+  font-weight: 600;
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  height: 48px;
+  text-align: center;
 }
 
 .danger-btn:hover {
   background-color: #e03a3a;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 </style>
 
 <style>
+.p-dialog-mask {
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5) !important;
+  pointer-events: auto !important;
+}
+
 .custom-dialog .p-dialog {
   background: #111111 !important;
-  border: 1px solid #222222 !important;
-  border-radius: 1rem !important;
+  border: 1px solid #c7cdd8 !important;
+  border-radius: 1.5rem !important;
+  width: 90vw !important;
+  max-width: 550px !important;
 }
 
 .custom-dialog .p-dialog-header {
   background: #111111 !important;
   border-bottom: 1px solid #222222 !important;
   color: white !important;
-  border-radius: 1rem 1rem 0 0 !important;
-  padding: 1.5rem !important;
+  border-radius: 1.5rem 1.5rem 0 0 !important;
+  padding: 1.75rem !important;
 }
 
 .custom-dialog .p-dialog-content {
   background: #111111 !important;
   color: white !important;
-  padding: 1.5rem !important;
+  padding: 1.75rem !important;
 }
 
 .custom-dialog .p-dialog-footer {
   background: #111111 !important;
   border-top: 1px solid #222222 !important;
-  border-radius: 0 0 1rem 1rem !important;
-  padding: 1.5rem !important;
+  border-radius: 0 0 1.5rem 1.5rem !important;
+  padding: 1.75rem !important;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
 }
 
 .custom-dialog .p-dialog-title {
-  font-size: 1.25rem !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+}
+
+.custom-dialog .p-button {
+  border-radius: 0.75rem !important;
+  padding: 0.75rem 1.5rem !important;
   font-weight: 600 !important;
+  transition: all 0.2s !important;
+}
+
+.custom-dialog .p-button.secondary-btn {
+  background: #222222 !important;
+  border: 1px solid #333333 !important;
+  color: white !important;
+}
+
+.custom-dialog .p-button.secondary-btn:hover {
+  background: #333333 !important;
+  border-color: #ff0a14 !important;
+}
+
+.custom-dialog .p-button.primary-btn {
+  background: #ff0a14 !important;
+  border: none !important;
+  color: white !important;
+}
+
+.custom-dialog .p-button.primary-btn:hover {
+  background: #e00912 !important;
 }
 </style>

@@ -1,77 +1,128 @@
 <template>
-  <span v-html="rendered" class="furigana-text"></span>
+  <span class="furigana-text" :data-language="Language" @click="speak">
+    <span class="main-text">{{ displayText }}</span>
+    <span v-if="FuriganaText && FuriganaText !== KanjiText" class="furigana">【{{ FuriganaText }}】</span>
+  </span>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 interface Props {
   KanjiText: string
   FuriganaText?: string | null
+  Language?: 'ja' | 'ru'
 }
 
-const props = defineProps<Props>()
-
-const rendered = computed(() => {
-  if (!props.FuriganaText || props.FuriganaText === props.KanjiText) {
-    return props.KanjiText
-  }
-
-  const kanji = props.KanjiText
-  const furigana = props.FuriganaText
-  let result = ''
-  let kIndex = 0
-  let fIndex = 0
-
-  while (kIndex < kanji.length) {
-    const char = kanji[kIndex]
-    if (/[\u4e00-\u9faf]/.test(char)) {
-      let kanjiPart = char
-      kIndex++
-      while (kIndex < kanji.length && /[\u4e00-\u9faf]/.test(kanji[kIndex])) {
-        kanjiPart += kanji[kIndex]
-        kIndex++
-      }
-      let furiganaPart = ''
-      while (fIndex < furigana.length && !/[\u4e00-\u9faf]/.test(furigana[fIndex])) {
-        furiganaPart += furigana[fIndex]
-        fIndex++
-      }
-      result += `<ruby>${kanjiPart}<rt>${furiganaPart}</rt></ruby>`
-    } else {
-      result += char
-      kIndex++
-      fIndex++
-    }
-  }
-
-  return result
+const props = withDefaults(defineProps<Props>(), {
+  FuriganaText: null,
+  Language: 'ja',
 })
+
+const displayText = computed(() => props.KanjiText)
+const voices = ref<SpeechSynthesisVoice[]>([])
+const voicesLoaded = ref(false)
+
+const loadVoices = () => {
+  voices.value = window.speechSynthesis.getVoices()
+  voicesLoaded.value = voices.value.length > 0
+}
+
+onMounted(() => {
+  loadVoices()
+  window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
+})
+
+onUnmounted(() => {
+  window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
+})
+
+const speak = () => {
+  if (!('speechSynthesis' in window)) {
+    console.warn('Speech synthesis not supported')
+    return
+  }
+
+  const text = props.KanjiText
+  if (!text) return
+
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = props.Language === 'ja' ? 'ja-JP' : 'ru-RU'
+
+  // Try to find appropriate voice
+  if (!voicesLoaded.value) {
+    loadVoices()
+  }
+  const targetLang = props.Language === 'ja' ? 'ja' : 'ru'
+  let matchingVoice = voices.value.find(v => v.lang === utterance.lang)
+  if (!matchingVoice) {
+    matchingVoice = voices.value.find(v => v.lang.startsWith(targetLang))
+  }
+  if (matchingVoice) {
+    utterance.voice = matchingVoice
+  }
+
+  utterance.rate = 0.9
+  window.speechSynthesis.speak(utterance)
+}
 </script>
 
 <style scoped>
 .furigana-text {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  cursor: default;
+  cursor: pointer;
+  display: inline;
 }
 
-.furigana-text :deep(ruby) {
-  display: inline-block;
-  text-align: center;
-  line-height: 1.2;
+.main-text {
+  user-select: text;
+  transition: background-position 0.3s ease;
+  background-size: 200% 100%;
+  background-image: linear-gradient(to right,
+      white 50%,
+      var(--hover-color) 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.furigana-text :deep(rt) {
-  display: block;
-  font-size: 0.5em;
+.furigana-text[data-language="ja"] .main-text {
+  --hover-color: #ff0a14;
+}
+
+.furigana-text[data-language="ru"] .main-text {
+  --hover-color: #004078;
+  background-image: linear-gradient(to right,
+      #c7cdd8 50%,
+      var(--hover-color) 50%);
+}
+
+.furigana-text:hover .main-text {
+  background-position: -100% 0;
+}
+
+.furigana {
   color: #c7cdd8;
-  line-height: 1;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+  user-select: text;
+  transition: background-position 0.3s ease;
+  background-size: 200% 100%;
+  background-image: linear-gradient(to right,
+      #c7cdd8 50%,
+      var(--hover-furigana-color) 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.furigana-text[data-language="ja"] .furigana {
+  --hover-furigana-color: #ff0a14;
+}
+
+.furigana-text[data-language="ru"] .furigana {
+  --hover-furigana-color: #004078;
+}
+
+.furigana-text:hover .furigana {
+  background-position: -100% 0;
 }
 </style>

@@ -6,87 +6,83 @@
       </button>
       <h1>{{ modeLabel }}</h1>
       <div class="header-right">
-        <span class="progress-text">{{ currentIndex + 1 }} / {{ cards.length }}</span>
+        <span class="progress-text">{{ currentIndex }} / {{ cards.length }}</span>
       </div>
     </div>
 
     <ProgressBar :value="progress" :show-value="false" class="progress-bar" />
 
     <div v-if="currentCard && !isFinished" class="card-container">
-      <div class="card" :class="{ flipped: showAnswer }">
+      <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
         <div class="card-inner">
           <div class="card-front">
-            <div class="text">{{ currentCard.KanjiText }}</div>
+            <div class="text" @click="speakJapanese">{{ currentCard.KanjiText }}</div>
           </div>
           <div class="card-back">
             <div class="word-section">
-              <div class="text">
-                <FuriganaText 
-                  :KanjiText="currentCard.KanjiText" 
-                  :FuriganaText="currentCard.FuriganaText" 
-                />
+              <div class="text clickable" @click="speakJapanese">
+                <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
               </div>
-              <button @click="speakJapanese" class="speaker-btn" title="Прослушать японское">
-                🔊
-              </button>
             </div>
             <div class="separator"></div>
             <div class="translation-section">
-              <div class="text">{{ currentCard.Translation }}</div>
-              <button @click="speakRussian" class="speaker-btn" title="Прослушать перевод">
-                🔊
-              </button>
+              <div class="text clickable" @click="speakRussian">{{ currentCard.Translation }}</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="actions">
-      <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
-        Показать ответ
-      </button>
-      <template v-else>
+    <div v-if="!isFinished" class="actions">
+      <div class="action-buttons">
         <template v-if="mode === 'interval'">
-          <button @click="submitReview(0)" class="grade-btn grade-0">
-            <span class="grade-emoji">😫</span>
-            <span class="grade-text">Повторить</span>
+          <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
+            Показать ответ
           </button>
-          <button @click="submitReview(3)" class="grade-btn grade-3">
-            <span class="grade-emoji">😕</span>
-            <span class="grade-text">Трудно</span>
-          </button>
-          <button @click="submitReview(4)" class="grade-btn grade-4">
-            <span class="grade-emoji">😊</span>
-            <span class="grade-text">Хорошо</span>
-          </button>
-          <button @click="submitReview(5)" class="grade-btn grade-5">
-            <span class="grade-emoji">🤩</span>
-            <span class="grade-text">Легко</span>
+          <template v-else>
+            <button @click="submitReview(0)" class="grade-btn grade-0">
+              <span class="grade-emoji">😵‍💫</span>
+              <span class="grade-text">Повторить</span>
+            </button>
+            <button @click="submitReview(3)" class="grade-btn grade-3">
+              <span class="grade-emoji">🥺</span>
+              <span class="grade-text">Трудно</span>
+            </button>
+            <button @click="submitReview(4)" class="grade-btn grade-4">
+              <span class="grade-emoji">😊</span>
+              <span class="grade-text">Хорошо</span>
+            </button>
+            <button @click="submitReview(5)" class="grade-btn grade-5">
+              <span class="grade-emoji">😜</span>
+              <span class="grade-text">Легко</span>
+            </button>
+          </template>
+        </template>
+        <template v-else>
+          <template v-if="!isAutoPlaying">
+            <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
+              Показать ответ
+            </button>
+            <div v-else class="free-mode-buttons">
+              <button @click="nextCard" class="primary-btn large">
+                Далее
+              </button>
+            </div>
+          </template>
+          <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
+            {{ isAutoPlaying ? 'Остановить' : 'Авто-режим' }}
           </button>
         </template>
-        <button v-else @click="nextCard" class="primary-btn large">
-          Далее
-        </button>
-      </template>
-    </div>
-
-    <div v-if="mode === 'free' && !isFinished" class="auto-play-controls">
-      <button 
-        @click="toggleAutoPlay" 
-        class="auto-play-btn"
-        :class="{ active: isAutoPlaying }"
-      >
-        <span class="icon">{{ isAutoPlaying ? '⏸️' : '▶️' }}</span>
-        <span class="text">{{ isAutoPlaying ? 'Остановить' : 'Автовоспроизведение' }}</span>
-      </button>
+      </div>
     </div>
 
     <div v-if="isFinished" class="finished">
-      <div class="finished-icon">🎉</div>
-      <h2>Тренировка завершена!</h2>
+      <div class="finished-icon">
+        <span class="main-emoji" style="user-select: none;">🎉</span>
+      </div>
+      <h2>Повторение завершено!</h2>
       <p>Повторено карточек: {{ cards.length }}</p>
-      <button @click="goBack" class="primary-btn large">
+      <button @click="goBack" class="primary-btn go-home-btn">
         Вернуться на главную
       </button>
     </div>
@@ -94,15 +90,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ProgressBar from 'primevue/progressbar'
 import FuriganaText from '../components/FuriganaText.vue'
 import type { TrainingCard as TrainingCardType } from '../types'
 import { useWails } from '../composables/useWails'
+import { useAlert } from '../composables/useAlert'
+import confetti from 'canvas-confetti'
 
 const router = useRouter()
 const route = useRoute()
+const { alert } = useAlert()
 const mode = computed(() => {
   const m = route.query.mode as string
   // Поддерживаем старые режимы для обратной совместимости
@@ -147,7 +146,7 @@ const loadVoices = () => {
 onMounted(async () => {
   loadVoices()
   window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
-  
+
   await loadCards()
 })
 
@@ -164,7 +163,7 @@ const loadCards = async () => {
     cards.value = await getTrainingCards(backendMode, deckIds)
   } catch (e) {
     console.error('Ошибка загрузки карточек для тренировки:', e)
-    alert('Не удалось загрузить карточки для тренировки: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось загрузить карточки для тренировки: ' + e })
   }
 }
 
@@ -178,11 +177,11 @@ const getVoice = (lang: string): SpeechSynthesisVoice | null => {
   if (!voicesLoaded) {
     loadVoices()
   }
-  
+
   // Сначала ищем точное соответствие
   let voice = voices.find((v) => v.lang === lang)
   if (voice) return voice
-  
+
   // Потом ищем по началу кода языка
   voice = voices.find((v) => v.lang.startsWith(lang.split('-')[0]))
   return voice || null
@@ -191,7 +190,7 @@ const getVoice = (lang: string): SpeechSynthesisVoice | null => {
 const speakJapanese = () => {
   if (!currentCard.value) return
   window.speechSynthesis.cancel()
-  
+
   const utterance = new SpeechSynthesisUtterance(currentCard.value.KanjiText)
   utterance.lang = 'ja-JP'
   const voice = getVoice('ja-JP')
@@ -205,7 +204,7 @@ const speakJapanese = () => {
 const speakRussian = () => {
   if (!currentCard.value) return
   window.speechSynthesis.cancel()
-  
+
   const utterance = new SpeechSynthesisUtterance(currentCard.value.Translation)
   utterance.lang = 'ru-RU'
   const voice = getVoice('ru-RU')
@@ -219,7 +218,7 @@ const speakRussian = () => {
 const speak = () => {
   if (!currentCard.value) return
   window.speechSynthesis.cancel()
-  
+
   const uttr1 = new SpeechSynthesisUtterance(currentCard.value.KanjiText)
   uttr1.lang = 'ja-JP'
   const jaVoice = getVoice('ja-JP')
@@ -227,9 +226,9 @@ const speak = () => {
     uttr1.voice = jaVoice
   }
   uttr1.rate = 0.9
-  
+
   window.speechSynthesis.speak(uttr1)
-  
+
   setTimeout(() => {
     if (!currentCard.value) return
     const uttr2 = new SpeechSynthesisUtterance(currentCard.value.Translation)
@@ -256,14 +255,44 @@ const submitReview = async (grade: number) => {
     nextCard()
   } catch (e) {
     console.error('Ошибка отправки повторения:', e)
-    alert('Не удалось отправить повторение: ' + e)
+    await alert({ title: 'Ошибка', message: 'Не удалось отправить повторение: ' + e })
   }
 }
 
 const nextCard = () => {
   window.speechSynthesis.cancel()
+  // First hide the answer
   showAnswer.value = false
-  currentIndex.value++
+  // Wait a tiny bit for the animation to start, then update index
+  setTimeout(() => {
+    currentIndex.value++
+    // Check if we just finished
+    nextTick(() => {
+      if (isFinished.value) {
+        triggerConfetti()
+      }
+    })
+  }, 50)
+}
+
+const triggerConfetti = () => {
+  const duration = 3 * 1000
+  const animationEnd = Date.now() + duration
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+  const random = (min: number, max: number) => Math.random() * (max - min) + min
+
+  const interval: any = setInterval(() => {
+    const timeLeft = animationEnd - Date.now()
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval)
+    }
+
+    const particleCount = 50 * (timeLeft / duration)
+    // since particles fall down, start a bit higher than random
+    confetti({ ...defaults, particleCount, origin: { x: random(0, 1), y: Math.random() - 0.2 } })
+  }, 250)
 }
 
 const toggleAutoPlay = () => {
@@ -301,15 +330,15 @@ const processAutoPlayStep = () => {
   // Показываем вопрос, ждем 2 секунды
   lazyTimer = window.setTimeout(() => {
     if (!isAutoPlaying.value || isFinished.value) return
-    
+
     // Показываем ответ и озвучиваем
     showAnswerFn()
-    
+
     // Ждем завершения озвучки + еще 3 секунды
     answerTimer = window.setTimeout(() => {
       if (!isAutoPlaying.value || isFinished.value) return
       nextCard()
-      
+
       // Переход к следующей карточке
       processAutoPlayStep()
     }, 3500)
@@ -399,6 +428,10 @@ watch(currentIndex, () => {
   align-items: center;
   margin-bottom: 2rem;
   min-height: 350px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .card {
@@ -447,6 +480,25 @@ watch(currentIndex, () => {
   font-family: 'Noto Sans JP', 'Inter', sans-serif;
   text-align: center;
   line-height: 1.4;
+  cursor: default;
+}
+
+.text.clickable {
+  cursor: pointer;
+  transition: background-position 0.3s ease;
+  background-size: 200% 100%;
+  background-image: linear-gradient(to right, white 50%, #ff0a14 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.translation-section .text.clickable {
+  background-image: linear-gradient(to right, #c7cdd8 50%, #004078 50%);
+}
+
+.text.clickable:hover {
+  background-position: -100% 0;
 }
 
 .word-section,
@@ -475,37 +527,35 @@ watch(currentIndex, () => {
   margin: 1.5rem 0;
 }
 
-.speaker-btn {
-  background: #222222;
-  border: 1px solid #333333;
-  border-radius: 50%;
-  width: 52px;
-  height: 52px;
-  font-size: 1.4rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.speaker-btn:hover {
-  background: #333333;
-  border-color: #ff0a14;
-  transform: scale(1.05);
-}
-
-.speaker-btn:active {
-  transform: scale(0.95);
-}
-
 .actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  transition: opacity 0.3s, visibility 0.3s;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.action-buttons,
+.free-mode-buttons {
   display: flex;
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+  width: 100%;
+}
+
+.action-buttons > * {
+  flex: 1;
+  min-width: 120px;
+}
+
+.free-mode-buttons > * {
+  flex: 1;
+  min-width: 150px;
 }
 
 .primary-btn {
@@ -521,7 +571,9 @@ watch(currentIndex, () => {
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  text-align: center;
 }
 
 .primary-btn:hover {
@@ -539,6 +591,30 @@ watch(currentIndex, () => {
   font-size: 1.1rem;
 }
 
+.secondary-btn {
+  background-color: #222222;
+  color: white;
+  border: 1px solid #333333;
+  padding: 0.875rem 1.75rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.secondary-btn:hover {
+  background-color: #333333;
+  border-color: #ff0a14;
+  transform: translateY(-2px);
+}
+
 .grade-btn {
   padding: 0.875rem 1.25rem;
   border-radius: 0.75rem;
@@ -550,13 +626,18 @@ watch(currentIndex, () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
+  flex: 1;
   min-width: 110px;
   border: none;
+  color: white;
+  text-align: center;
 }
 
 .grade-emoji {
   font-size: 1.75rem;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
 }
 
 .grade-text {
@@ -565,80 +646,45 @@ watch(currentIndex, () => {
 }
 
 .grade-0 {
-  background-color: #444444;
-  color: white;
+  background-color: #d62828;
 }
 
 .grade-0:hover {
-  background-color: #333333;
+  background-color: #b81d24;
   transform: translateY(-2px);
 }
 
 .grade-3 {
-  background-color: #ff6b6b;
-  color: white;
+  background-color: #e8904a;
 }
 
 .grade-3:hover {
-  background-color: #ee5a5a;
+  background-color: #d87b32;
   transform: translateY(-2px);
 }
 
 .grade-4 {
-  background-color: #ffd93d;
-  color: #111111;
+  background-color: #004078;
 }
 
 .grade-4:hover {
-  background-color: #eec82c;
+  background-color: #003058;
   transform: translateY(-2px);
 }
 
 .grade-5 {
-  background-color: #6bcb77;
-  color: white;
+  background-color: #365700;
 }
 
 .grade-5:hover {
-  background-color: #5aba66;
+  background-color: #2a4500;
   transform: translateY(-2px);
-}
-
-.auto-play-controls {
-  margin-top: 1.5rem;
-  display: flex;
-  justify-content: center;
-}
-
-.auto-play-btn {
-  background-color: #222222;
-  color: white;
-  border: 1px solid #333333;
-  padding: 0.875rem 1.75rem;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.auto-play-btn:hover {
-  background-color: #333333;
-  border-color: #ff0a14;
 }
 
 .auto-play-btn.active {
   background-color: #1a3a1a;
   border-color: #6bcb77;
   color: #6bcb77;
-}
-
-.auto-play-btn .icon {
-  font-size: 1.2rem;
 }
 
 .finished {
@@ -654,6 +700,7 @@ watch(currentIndex, () => {
 .finished-icon {
   font-size: 5rem;
   margin-bottom: 0.5rem;
+  display: inline-block;
 }
 
 .finished h2 {
@@ -688,5 +735,11 @@ watch(currentIndex, () => {
 
 .icon {
   font-size: 1.25rem;
+}
+
+.go-home-btn {
+  width: auto;
+  min-width: 200px;
+  margin: 0 auto;
 }
 </style>
