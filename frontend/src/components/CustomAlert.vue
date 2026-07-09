@@ -1,16 +1,28 @@
 <template>
   <Teleport to="body">
     <Transition name="alert">
-      <div v-if="visible" class="custom-alert-overlay" @click="handleOverlayClick">
-        <div class="custom-alert" @click.stop>
-          <div class="custom-alert-header">
-            <span class="custom-alert-title">{{ title }}</span>
+      <div v-if="visible" class="alert-overlay" @click="handleOverlayClick">
+        <div class="alert-modal" @click.stop>
+          <div class="alert-header">
+            <span class="alert-title">{{ title }}</span>
           </div>
-          <div class="custom-alert-content">
-            <p class="custom-alert-message">{{ message }}</p>
+          <div class="alert-body">
+            <p class="alert-message">{{ message }}</p>
           </div>
-          <div class="custom-alert-footer">
-            <button @click="close" class="primary-btn">{{ buttonText }}</button>
+          <div class="alert-footer">
+            <!-- Alert: одна кнопка -->
+            <button v-if="mode === 'alert'" ref="mainBtn" @click="close" class="alert-btn primary">
+              {{ buttonText }}
+            </button>
+            <!-- Confirm: две кнопки -->
+            <template v-else>
+              <button ref="mainBtn" @click="confirmAction(false)" class="alert-btn secondary">
+                {{ cancelText }}
+              </button>
+              <button @click="confirmAction(true)" class="alert-btn primary">
+                {{ confirmText }}
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -19,21 +31,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 
 const visible = ref(false)
+const mode = ref<'alert' | 'confirm'>('alert')
 const title = ref('')
 const message = ref('')
 const buttonText = ref('OK')
-let resolveCallback: (() => void) | null = null
+const confirmText = ref('Подтвердить')
+const cancelText = ref('Отмена')
+const mainBtn = ref<HTMLButtonElement | null>(null)
 
+let resolveCallback: (() => void) | null = null
+let confirmResolveCallback: ((value: boolean) => void) | null = null
+
+// Alert — одна кнопка, просто закрыть
 const show = (params: { title?: string; message: string; buttonText?: string }): Promise<void> => {
   return new Promise((resolve) => {
+    mode.value = 'alert'
     title.value = params.title || 'Уведомление'
     message.value = params.message
     buttonText.value = params.buttonText || 'OK'
     visible.value = true
     resolveCallback = resolve
+    nextTick(() => mainBtn.value?.focus())
+  })
+}
+
+// Confirm — две кнопки, вернуть boolean
+const confirm = (params: { title?: string; message: string; confirmText?: string; cancelText?: string }): Promise<boolean> => {
+  return new Promise((resolve) => {
+    mode.value = 'confirm'
+    title.value = params.title || 'Подтверждение'
+    message.value = params.message
+    confirmText.value = params.confirmText || 'Подтвердить'
+    cancelText.value = params.cancelText || 'Отмена'
+    visible.value = true
+    confirmResolveCallback = resolve
+    nextTick(() => mainBtn.value?.focus())
   })
 }
 
@@ -45,22 +80,47 @@ const close = () => {
   }
 }
 
-const handleOverlayClick = () => {
-  close()
+const confirmAction = (value: boolean) => {
+  visible.value = false
+  if (confirmResolveCallback) {
+    confirmResolveCallback(value)
+    confirmResolveCallback = null
+  }
 }
 
-defineExpose({ show })
+const handleOverlayClick = () => {
+  // В alert-режиме клик по оверлею закрывает, в confirm — нет (чтобы случайно не подтвердить)
+  if (mode.value === 'alert') {
+    close()
+  }
+}
+
+// Esc — отмена/закрытие
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && visible.value) {
+    if (mode.value === 'confirm') {
+      confirmAction(false)
+    } else {
+      close()
+    }
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
+
+defineExpose({ show, confirm })
 </script>
 
 <style scoped>
-.custom-alert-overlay {
+.alert-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -68,77 +128,49 @@ defineExpose({ show })
   padding: 1rem;
 }
 
-.custom-alert {
+.alert-modal {
   background: #111111;
   border: 1px solid #c7cdd8;
   border-radius: 1.5rem;
   width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  animation: alertIn 0.3s ease-out;
+  max-width: 460px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
 }
 
-@keyframes alertIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+.alert-header {
+  padding: 2rem 1.75rem 0.75rem;
 }
 
-.alert-enter-active,
-.alert-leave-active {
-  transition: all 0.3s ease;
-}
-
-.alert-enter-from,
-.alert-leave-to {
-  opacity: 0;
-}
-
-.alert-enter-from .custom-alert,
-.alert-leave-to .custom-alert {
-  transform: scale(0.9) translateY(-20px);
-}
-
-.custom-alert-header {
-  padding: 1.75rem 1.75rem 1rem;
-  border-bottom: 1px solid #222222;
-}
-
-.custom-alert-title {
+.alert-title {
   font-size: 1.35rem;
   font-weight: 700;
   color: white;
+  display: block;
 }
 
-.custom-alert-content {
-  padding: 1.25rem 1.75rem;
+.alert-body {
+  padding: 0.5rem 1.75rem 1.5rem;
 }
 
-.custom-alert-message {
+.alert-message {
   color: #c7cdd8;
   font-size: 1rem;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-.custom-alert-footer {
-  padding: 1rem 1.75rem 1.75rem;
+.alert-footer {
+  padding: 1.25rem 1.75rem 1.75rem;
   border-top: 1px solid #222222;
   display: flex;
+  gap: 0.75rem;
   justify-content: center;
 }
 
-.primary-btn {
-  background-color: #ff0a14;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.75rem;
+.alert-btn {
+  padding: 0.75rem 2rem;
   border-radius: 0.75rem;
   cursor: pointer;
   font-family: inherit;
@@ -149,10 +181,57 @@ defineExpose({ show })
   align-items: center;
   justify-content: center;
   text-align: center;
+  min-width: 120px;
+  border: none;
 }
 
-.primary-btn:hover {
+.alert-btn.primary {
+  background-color: #ff0a14;
+  color: white;
+}
+
+.alert-btn.primary:hover {
   background-color: #e00912;
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 10, 20, 0.35);
+}
+
+.alert-btn.primary:active {
+  transform: translateY(0);
+}
+
+.alert-btn.secondary {
+  background-color: #222222;
+  color: white;
+  border: 1px solid #333333;
+}
+
+.alert-btn.secondary:hover {
+  background-color: #333333;
+  border-color: #ff0a14;
+  transform: translateY(-2px);
+}
+
+.alert-btn:focus-visible {
+  outline: 2px solid #ff0a14;
+  outline-offset: 3px;
+}
+
+/* Анимация */
+.alert-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.alert-leave-active {
+  transition: all 0.15s ease;
+}
+.alert-enter-from,
+.alert-leave-to {
+  opacity: 0;
+}
+.alert-enter-from .alert-modal {
+  transform: scale(0.85) translateY(-30px);
+}
+.alert-leave-to .alert-modal {
+  transform: scale(0.9) translateY(10px);
 }
 </style>

@@ -4,9 +4,16 @@ type AlertParams = {
   buttonText?: string
 }
 
-// Use a global variable instead of ref to avoid reactivity issues
+type ConfirmParams = {
+  title?: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+}
+
 let alertInstance: {
   show: (params: AlertParams) => Promise<void>
+  confirm: (params: ConfirmParams) => Promise<boolean>
 } | null = null
 
 export const useAlert = () => {
@@ -18,9 +25,18 @@ export const useAlert = () => {
     if (alertInstance) {
       return alertInstance.show(params)
     }
-    // Fallback to native alert
-    return Promise.resolve(window.alert(params.message))
+    // Fallback
+    window.alert(params.message)
+    return Promise.resolve()
   }
 
-  return { registerAlert, alert }
+  const confirm = (params: ConfirmParams): Promise<boolean> => {
+    if (alertInstance) {
+      return alertInstance.confirm(params)
+    }
+    // Fallback
+    return Promise.resolve(window.confirm(params.message))
+  }
+
+  return { registerAlert, alert, confirm }
 }

@@ -10,6 +10,9 @@
         <span class="icon">+</span>
         Новая колода
       </button>
+      <button v-if="decks.length > 0" @click="toggleSelectAll" class="primary-btn select-all-btn">
+        {{ allSelected ? 'Сбросить все' : 'Выбрать все' }}
+      </button>
     </div>
 
     <div v-if="decks.length === 0" class="empty-state">
@@ -29,12 +32,40 @@
     </div>
 
     <div v-if="decks.length > 0" class="training-buttons">
-      <button @click="startTraining('interval')" :disabled="selectedDeckIds.length === 0" class="training-btn">
-        Повторение
-      </button>
-      <button @click="startTraining('free')" :disabled="selectedDeckIds.length === 0" class="training-btn">
-        Свободный режим
-      </button>
+      <div class="training-btn-wrapper">
+        <button @click="startTraining('interval')" :disabled="selectedDeckIds.length === 0" class="training-btn">
+          Повторение
+        </button>
+        <div class="corner-trigger" @mouseenter="activePopover = 'interval'" @mouseleave="onLeavePopover"
+          @click="startTraining('interval')">
+          <span class="corner-fold">✦</span>
+        </div>
+        <Transition name="popover">
+          <div v-if="activePopover === 'interval'" class="legend-popover" @mouseenter="clearPopoverTimer"
+            @mouseleave="onLeavePopover">
+            <strong class="popover-title">Интервальное повторение</strong>
+            <p class="popover-desc">Алгоритм SM-2 анализирует ваши оценки и показывает карточки именно тогда, когда вы
+              вот-вот их забудете. Максимальная эффективность запоминания.</p>
+          </div>
+        </Transition>
+      </div>
+      <div class="training-btn-wrapper">
+        <button @click="startTraining('free')" :disabled="selectedDeckIds.length === 0" class="training-btn">
+          Свободный режим
+        </button>
+        <div class="corner-trigger" @mouseenter="activePopover = 'free'" @mouseleave="onLeavePopover"
+          @click="startTraining('free')">
+          <span class="corner-fold">✦</span>
+        </div>
+        <Transition name="popover">
+          <div v-if="activePopover === 'free'" class="legend-popover" @mouseenter="clearPopoverTimer"
+            @mouseleave="onLeavePopover">
+            <strong class="popover-title">Свободный режим</strong>
+            <p class="popover-desc">Листайте карточки в своём темпе, без оценок и таймеров. Идеально для первого
+              знакомства с новым материалом или быстрого повторения.</p>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <Dialog v-model:visible="createDeckModalVisible" header="Создать колоду" class="custom-dialog" :closable="false">
@@ -55,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -74,6 +105,22 @@ const newDeckName = ref('')
 const isLoading = ref(false)
 const errors = ref({ deckName: '' })
 const shake = ref(false)
+const activePopover = ref<string | null>(null)
+let popoverTimer: number | null = null
+
+const clearPopoverTimer = () => {
+  if (popoverTimer !== null) {
+    clearTimeout(popoverTimer)
+    popoverTimer = null
+  }
+}
+
+const onLeavePopover = () => {
+  clearPopoverTimer()
+  popoverTimer = window.setTimeout(() => {
+    activePopover.value = null
+  }, 250)
+}
 
 onMounted(async () => {
   const saved = localStorage.getItem('selectedDeckIds')
@@ -86,8 +133,6 @@ onMounted(async () => {
 watch(selectedDeckIds, (newVal) => {
   localStorage.setItem('selectedDeckIds', JSON.stringify(newVal))
 })
-
-
 
 const loadDecks = async () => {
   try {
@@ -152,6 +197,18 @@ const goToDeck = (id: number) => {
 const startTraining = (mode: string) => {
   if (selectedDeckIds.value.length === 0) return
   router.push({ name: 'Training', query: { mode, deckIds: selectedDeckIds.value.join(',') } })
+}
+
+const allSelected = computed(() => {
+  return decks.value.length > 0 && selectedDeckIds.value.length === decks.value.length
+})
+
+const toggleSelectAll = () => {
+  if (allSelected.value) {
+    selectedDeckIds.value = []
+  } else {
+    selectedDeckIds.value = decks.value.map(d => d.ID)
+  }
 }
 </script>
 
@@ -285,6 +342,13 @@ const startTraining = (mode: string) => {
 
 .actions {
   margin: 0 0 2rem 0;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.select-all-btn {
+  margin-left: auto;
 }
 
 .primary-btn {
@@ -344,18 +408,118 @@ const startTraining = (mode: string) => {
   flex-wrap: wrap;
 }
 
-.training-btn {
+.training-btn-wrapper {
+  position: relative;
   flex: 1;
   min-width: 200px;
+}
+
+.training-btn {
+  width: 100%;
   padding: 1rem 1.5rem;
   font-size: 1.05rem;
   font-weight: 700;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .training-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 20px rgba(255, 10, 20, 0.3);
+}
+
+.training-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Corner fold + popover info card */
+.corner-trigger {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  z-index: 5;
+  cursor: pointer;
+}
+
+.corner-fold {
+  display: block;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 10, 20, 0.45) 100%);
+  border-left: 1px solid rgba(255, 10, 20, 0.3);
+  border-bottom: 1px solid rgba(255, 10, 20, 0.3);
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.55rem;
+  line-height: 1;
+  text-align: right;
+  padding: 3px 4px 0 0;
+  pointer-events: none;
+}
+
+.corner-trigger:hover .corner-fold {
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 10, 20, 0.75) 100%);
+  border-left-color: rgba(255, 10, 20, 0.5);
+  border-bottom-color: rgba(255, 10, 20, 0.5);
+  color: #ffffff;
+}
+
+/* Popover card — справа от уголка */
+.legend-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: calc(100% + 10px);
+  width: 280px;
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.popover-title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ff0a14;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.popover-desc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #c7cdd8;
+  margin: 0;
+}
+
+/* Popover transition */
+.popover-enter-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.popover-leave-active {
+  transition: all 0.15s ease;
+}
+
+.popover-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.popover-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
 .form-content {

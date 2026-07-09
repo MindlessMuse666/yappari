@@ -59,19 +59,17 @@
           </template>
         </template>
         <template v-else>
+          <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
+            {{ isAutoPlaying ? 'Остановить' : 'Авто' }}
+          </button>
           <template v-if="!isAutoPlaying">
             <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
               Показать ответ
             </button>
-            <div v-else class="free-mode-buttons">
-              <button @click="nextCard" class="primary-btn large">
-                Далее
-              </button>
-            </div>
+            <button v-else @click="nextCard" class="primary-btn large">
+              Далее
+            </button>
           </template>
-          <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
-            {{ isAutoPlaying ? 'Остановить' : 'Авто-режим' }}
-          </button>
         </template>
       </div>
     </div>
@@ -108,7 +106,10 @@ const mode = computed(() => {
   if (m === 'normal' || m === 'lazy') return 'free'
   return m || 'interval'
 })
-const deckIds = (route.query.deckIds as string).split(',').map(Number)
+const rawDeckIds = route.query.deckIds as string | undefined
+const deckIds = rawDeckIds
+  ? rawDeckIds.split(',').map(Number).filter(id => !isNaN(id))
+  : []
 const { isWails, getTrainingCards, submitReview: submitReviewWails, speakText, checkEdgeTTS } = useWails()
 
 const modeLabel = computed(() => {
@@ -191,7 +192,21 @@ const speak = async () => {
 }
 
 onMounted(async () => {
+  // Защита: если не выбраны колоды — редирект на главную
+  if (deckIds.length === 0) {
+    await alert({ title: 'Ошибка', message: 'Не выбраны колоды для тренировки. Вернитесь на главную и выберите хотя бы одну колоду.' })
+    router.push({ name: 'Home' })
+    return
+  }
+
   await loadCards()
+
+  // Если карточки не загрузились (нет карточек в колоде / ошибка) — редирект
+  if (cards.value.length === 0) {
+    router.push({ name: 'Home' })
+    return
+  }
+
   // Проверяем доступность TTS в Wails-режиме
   if (isWails) {
     try {
@@ -520,8 +535,7 @@ watch(currentIndex, () => {
   margin-right: auto;
 }
 
-.action-buttons,
-.free-mode-buttons {
+.action-buttons {
   display: flex;
   gap: 1rem;
   justify-content: center;
@@ -532,11 +546,6 @@ watch(currentIndex, () => {
 .action-buttons>* {
   flex: 1;
   min-width: 120px;
-}
-
-.free-mode-buttons>* {
-  flex: 1;
-  min-width: 150px;
 }
 
 .primary-btn {
@@ -662,9 +671,16 @@ watch(currentIndex, () => {
   transform: translateY(-2px);
 }
 
+.auto-play-btn {
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+}
+
 .auto-play-btn.active {
   background-color: #1a3a1a;
-  border-color: #6bcb77;
+  border: 1px solid #6bcb77;
   color: #6bcb77;
 }
 

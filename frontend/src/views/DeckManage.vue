@@ -84,7 +84,7 @@ import FuriganaText from '../components/FuriganaText.vue'
 const router = useRouter()
 const route = useRoute()
 const { getDecks, getCardsByDeck, updateDeck, resetDeckProgress: resetDeckProgressWails, deleteDeck: deleteDeckWails, createCard: createCardWails, updateCard: updateCardWails, deleteCard: deleteCardWails } = useWails()
-const { alert } = useAlert()
+const { alert, confirm } = useAlert()
 const deckId = Number(route.params.id)
 const deckName = ref('')
 const cards = ref<Card[]>([])
@@ -140,7 +140,8 @@ const updateDeckName = async () => {
 }
 
 const resetDeckProgress = async () => {
-  if (!confirm('Сбросить прогресс всей колоды?')) return
+  const ok = await confirm({ title: 'Сброс прогресса', message: 'Сбросить прогресс всей колоды?', confirmText: 'Сбросить', cancelText: 'Отмена' })
+  if (!ok) return
   try {
     await resetDeckProgressWails(deckId)
     await alert({ title: 'Успешно', message: 'Прогресс успешно сброшен!' })
@@ -151,7 +152,8 @@ const resetDeckProgress = async () => {
 }
 
 const deleteDeck = async () => {
-  if (!confirm('Удалить колоду и все карточки?')) return
+  const ok = await confirm({ title: 'Удаление колоды', message: 'Удалить колоду и все карточки? Это действие необратимо.', confirmText: 'Удалить', cancelText: 'Отмена' })
+  if (!ok) return
   try {
     await deleteDeckWails(deckId)
     router.push({ name: 'Home' })
@@ -198,7 +200,8 @@ const editCard = (card: Card) => {
 }
 
 const deleteCard = async (id: number) => {
-  if (!confirm('Удалить карточку?')) return
+  const ok = await confirm({ title: 'Удаление карточки', message: 'Удалить карточку?', confirmText: 'Удалить', cancelText: 'Отмена' })
+  if (!ok) return
   try {
     await deleteCardWails(id)
     await loadCards()
@@ -498,7 +501,7 @@ const closeCardModal = () => {
 }
 
 .danger-btn {
-  background-color: #ff4444;
+  background-color: #ff0a14;
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -517,7 +520,7 @@ const closeCardModal = () => {
 }
 
 .danger-btn:hover {
-  background-color: #e03a3a;
+  background-color: #e00912;
   transform: translateY(-2px);
 }
 </style>

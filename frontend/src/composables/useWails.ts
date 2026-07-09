@@ -658,7 +658,106 @@ export function useWails() {
     if (isWails) {
       return window.go!.main.App.CheckVoicesAvailability()
     }
-    return { Ja: true, Ru: true }
+    // Реальная проверка голосов через Web Speech API
+    const voices = await loadVoices()
+    const jaVoice = voices.some(v => v.lang.startsWith('ja'))
+    const ruVoice = voices.some(v => v.lang.startsWith('ru'))
+    return { Ja: jaVoice, Ru: ruVoice }
+  }
+
+  // Web Speech API: загружаем голоса (на Chrome список приходит асинхронно)
+  const loadVoices = (): Promise<SpeechSynthesisVoice[]> => {
+    return new Promise((resolve) => {
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        resolve(voices)
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+          resolve(window.speechSynthesis.getVoices())
+        }
+        // Таймаут на случай, если voiceschanged не сработает
+        setTimeout(() => resolve(window.speechSynthesis.getVoices() || []), 3000)
+      }
+    })
+  }
+
+  // Web Speech API: найти голос, подходящий под язык
+  const findVoice = (voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | undefined => {
+    // Сначала точное совпадение (ja-JP)
+    let voice = voices.find(v => v.lang === lang)
+    if (voice) return voice
+    // Затем по префиксу языка (ja)
+    const prefix = lang.split('-')[0]
+    voice = voices.find(v => v.lang.startsWith(prefix))
+    if (voice) return voice
+    // Любой голос, который содержит упоминание языка
+    return voices.find(v => v.lang && v.lang.toLowerCase().includes(prefix))
+  }
+
+  // Web Speech API: произнести текст без указания голоса (системный умолчание)
+  const speakWithDefaultVoice = (text: string, lang: string): Promise<string> => {
+    return new Promise((resolve) => {
+      try {
+        const utterance = new SpeechSynthesisUtterance(text)
+        utterance.lang = lang
+        utterance.rate = 0.9
+        utterance.onend = () => resolve('')
+        utterance.onerror = () => resolve('')
+        window.speechSynthesis.speak(utterance)
+      } catch {
+        resolve('')
+      }
+    })
+  }
+
+  // Google Translate TTS как запасной вариант для Web Speech API
+  const speakWithGoogleTTS = async (text: string, lang: string): Promise<string> => {
+    const tl = lang.split('-')[0]
+    const url = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${tl}&client=tw-ob&q=${encodeURIComponent(text)}`
+
+    // Стратегия 1: fetch + blob (позволяет установить Referer и обойти CORS)
+    try {
+      const response = await fetch(url, {
+        headers: { 'Referer': 'https://translate.google.com' },
+      })
+      if (response.ok) {
+        // Google возвращает аудио — проверяем content-type или что размер > 0
+        const blob = await response.blob()
+        if (blob.size > 500) {
+          const blobUrl = URL.createObjectURL(blob)
+          return new Promise<string>((resolve) => {
+            const audio = new Audio()
+            audio.src = blobUrl
+            audio.volume = 1
+            audio.onended = () => { URL.revokeObjectURL(blobUrl); resolve('ok') }
+            audio.onerror = () => { URL.revokeObjectURL(blobUrl); resolve('') }
+            audio.play().catch(() => { URL.revokeObjectURL(blobUrl); resolve('') })
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('Google TTS fetch error, trying direct audio:', e)
+    }
+
+    // Стратегия 2: прямая установка src на <audio> (работает в некоторых браузерах)
+    try {
+      const audio = new Audio(url)
+      audio.volume = 1
+      return new Promise<string>((resolve) => {
+        audio.onended = () => resolve('ok')
+        audio.onerror = (e) => {
+          console.error(`Google TTS direct error for ${lang}:`, e)
+          resolve('')
+        }
+        audio.play().catch((e) => {
+          console.error(`Google TTS play error for ${lang}:`, e)
+          resolve('')
+        })
+      })
+    } catch (e) {
+      console.error('Google TTS critical error:', e)
+      return ''
+    }
   }
 
   const speakText = async (text: string, lang: string): Promise<string> => {
@@ -666,19 +765,55 @@ export function useWails() {
       return window.go!.main.App.SpeakText(text, lang)
     }
     // Web Speech API fallback для разработки без Wails
-    return new Promise((resolve) => {
+    try {
       if (!window.speechSynthesis) {
         console.warn('Web Speech API недоступен')
-        resolve('')
-        return
+        return ''
       }
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = lang
-      utterance.rate = 0.9
-      utterance.onend = () => resolve('')
-      utterance.onerror = () => resolve('')
-      window.speechSynthesis.speak(utterance)
-    })
+
+      // Отменяем предыдущую озвучку (Chrome иногда зависает в состоянии "paused")
+      window.speechSynthesis.cancel()
+
+      // Загружаем голоса и находим подходящий
+      const voices = await loadVoices()
+      const voice = findVoice(voices, lang)
+
+      if (voice) {
+        // Голос найден — используем Web Speech API
+        return new Promise<string>((resolve) => {
+          const utterance = new SpeechSynthesisUtterance(text)
+          utterance.lang = lang
+          utterance.rate = 0.9
+          utterance.voice = voice
+
+          utterance.onend = () => resolve('')
+          utterance.onerror = (e) => {
+            console.error(`Web Speech API ошибка для ${lang}:`, e)
+            resolve('')
+          }
+          window.speechSynthesis.speak(utterance)
+        })
+      }
+
+      // Голос не найден — пробуем запасные способы
+      console.warn(`Голос для языка ${lang} не найден. Пробуем запасные способы...`)
+      console.warn(`Доступные голоса:`, voices.map(v => `${v.lang} - ${v.name}`).join(', '))
+
+      // Запасной способ 1: Google TTS через <audio> (обход Web Speech API)
+      const ok = await speakWithGoogleTTS(text, lang)
+      if (ok) {
+        // Google TTS воспроизвёл через <audio>, возвращаем '' (playAudio пропустит)
+        return ''
+      }
+
+      // Запасной способ 2: Web Speech API без указания конкретного голоса
+      console.warn(`Google TTS не сработал для ${lang}, пробуем Web Speech API без голоса...`)
+      await speakWithDefaultVoice(text, lang)
+      return ''
+    } catch (e) {
+      console.error(`speakText критическая ошибка для ${lang}:`, e)
+      return ''
+    }
   }
 
   const checkEdgeTTS = async (): Promise<{ available: boolean; message: string }> => {
