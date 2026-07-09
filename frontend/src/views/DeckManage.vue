@@ -2,20 +2,28 @@
   <div class="deck-manage">
     <div class="header">
       <button @click="goBack">← Назад</button>
-      <InputText v-model="deckName" @keyup.enter="updateDeckName" />
+      <InputText v-model="deckName" @keyup.enter="updateDeckName" placeholder="Название колоды" />
       <button @click="resetDeckProgress">Сбросить прогресс</button>
       <button @click="deleteDeck" class="danger">Удалить колоду</button>
     </div>
+
     <div class="add-card">
       <Button label="Добавить карточку" @click="cardFormModalVisible = true" />
     </div>
-    <DataTable :value="cards" paginator :rows="10">
-      <Column field="kanjiText" header="Японский" />
-      <Column field="translation" header="Перевод" />
+
+    <div v-if="cards.length === 0" class="empty-state">
+      <p>В этой колоде пока нет карточек. Добавь первую!</p>
+    </div>
+
+    <DataTable v-else :value="cards" paginator :rows="10" class="data-table">
+      <Column field="KanjiText" header="Японский" />
+      <Column field="Translation" header="Перевод" />
       <Column header="Действия">
         <template #body="slotProps">
-          <Button label="Редактировать" @click="editCard(slotProps.data)" />
-          <Button label="Удалить" @click="deleteCard(slotProps.data.id)" />
+          <div class="actions-cell">
+            <Button label="Редактировать" size="small" @click="editCard(slotProps.data)" />
+            <Button label="Удалить" size="small" @click="deleteCard(slotProps.data.ID)" />
+          </div>
         </template>
       </Column>
     </DataTable>
@@ -23,11 +31,11 @@
     <Dialog v-model:visible="cardFormModalVisible" :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'">
       <div class="form">
         <label>Японское слово *</label>
-        <InputText v-model="cardForm.kanjiText" />
-        <label>Чтение</label>
-        <InputText v-model="cardForm.furiganaText" />
+        <InputText v-model="cardForm.KanjiText" placeholder="Например: 食べる" />
+        <label>Чтение (фуригана)</label>
+        <InputText v-model="cardForm.FuriganaText" placeholder="Например: たべる" />
         <label>Перевод *</label>
-        <InputText v-model="cardForm.translation" />
+        <InputText v-model="cardForm.Translation" placeholder="Например: есть" />
       </div>
       <template #footer>
         <Button label="Отмена" @click="cardFormModalVisible = false" />
@@ -45,39 +53,21 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-
-interface Card {
-  id: number
-  deck_id: number
-  kanjiText: string
-  furiganaText?: string | null
-  translation: string
-  easeFactor: number
-  interval: number
-  repetitions: number
-  nextReview: string
-  lastReview?: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-interface Deck {
-  id: number
-  name: string
-  created_at: string
-}
+import type { Deck, Card, CardInput } from '../types'
+import { useWails } from '../composables/useWails'
 
 const router = useRouter()
 const route = useRoute()
+const { getDecks, getCardsByDeck, updateDeck, resetDeckProgress: resetDeckProgressWails, deleteDeck: deleteDeckWails, createCard: createCardWails, updateCard: updateCardWails, deleteCard: deleteCardWails } = useWails()
 const deckId = Number(route.params.id)
 const deckName = ref('')
 const cards = ref<Card[]>([])
 const cardFormModalVisible = ref(false)
 const editingCard = ref<Card | null>(null)
 const cardForm = ref({
-  kanjiText: '',
-  furiganaText: '',
-  translation: ''
+  KanjiText: '',
+  FuriganaText: '',
+  Translation: ''
 })
 
 onMounted(async () => {
@@ -87,23 +77,23 @@ onMounted(async () => {
 
 const loadDeck = async () => {
   try {
-    // @ts-ignore
-    const decks = await window.go.main.App.GetDecks()
-    const deck = decks.find((d: Deck) => d.id === deckId)
+    const decksList = await getDecks()
+    const deck = decksList.find((d: Deck) => d.ID === deckId)
     if (deck) {
-      deckName.value = deck.name
+      deckName.value = deck.Name
     }
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка загрузки колоды:', e)
+    alert('Не удалось загрузить колоду: ' + e)
   }
 }
 
 const loadCards = async () => {
   try {
-    // @ts-ignore
-    cards.value = await window.go.main.App.GetCardsByDeck(deckId)
+    cards.value = await getCardsByDeck(deckId)
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка загрузки карточек:', e)
+    alert('Не удалось загрузить карточки: ' + e)
   }
 }
 
@@ -112,40 +102,43 @@ const goBack = () => {
 }
 
 const updateDeckName = async () => {
+  if (!deckName.value.trim()) return
   try {
-    // @ts-ignore
-    await window.go.main.App.UpdateDeck(deckId, deckName.value)
+    await updateDeck(deckId, deckName.value)
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка обновления названия:', e)
+    alert('Не удалось обновить название: ' + e)
   }
 }
 
 const resetDeckProgress = async () => {
+  if (!confirm('Сбросить прогресс всей колоды?')) return
   try {
-    // @ts-ignore
-    await window.go.main.App.ResetDeckProgress(deckId)
+    await resetDeckProgressWails(deckId)
+    alert('Прогресс успешно сброшен!')
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка сброса прогресса:', e)
+    alert('Не удалось сбросить прогресс: ' + e)
   }
 }
 
 const deleteDeck = async () => {
   if (!confirm('Удалить колоду и все карточки?')) return
   try {
-    // @ts-ignore
-    await window.go.main.App.DeleteDeck(deckId)
+    await deleteDeckWails(deckId)
     router.push({ name: 'Home' })
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка удаления колоды:', e)
+    alert('Не удалось удалить колоду: ' + e)
   }
 }
 
 const editCard = (card: Card) => {
   editingCard.value = card
   cardForm.value = {
-    kanjiText: card.kanjiText,
-    furiganaText: card.furiganaText || '',
-    translation: card.translation
+    KanjiText: card.KanjiText,
+    FuriganaText: card.FuriganaText || '',
+    Translation: card.Translation
   }
   cardFormModalVisible.value = true
 }
@@ -153,40 +146,41 @@ const editCard = (card: Card) => {
 const deleteCard = async (id: number) => {
   if (!confirm('Удалить карточку?')) return
   try {
-    // @ts-ignore
-    await window.go.main.App.DeleteCard(id)
+    await deleteCardWails(id)
     await loadCards()
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка удаления карточки:', e)
+    alert('Не удалось удалить карточку: ' + e)
   }
 }
 
 const saveCard = async () => {
-  if (!cardForm.value.kanjiText.trim() || !cardForm.value.translation.trim()) return
+  if (!cardForm.value.KanjiText.trim() || !cardForm.value.Translation.trim()) {
+    alert('Пожалуйста, заполните обязательные поля!')
+    return
+  }
+
   try {
-    if (editingCard.value) {
-      // @ts-ignore
-      await window.go.main.App.UpdateCard(editingCard.value.id, {
-        deck_id: deckId,
-        kanji_text: cardForm.value.kanjiText,
-        furigana_text: cardForm.value.furiganaText || null,
-        translation: cardForm.value.translation
-      })
-    } else {
-      // @ts-ignore
-      await window.go.main.App.CreateCard({
-        deck_id: deckId,
-        kanji_text: cardForm.value.kanjiText,
-        furigana_text: cardForm.value.furiganaText || null,
-        translation: cardForm.value.translation
-      })
+    const input: CardInput = {
+      DeckID: deckId,
+      KanjiText: cardForm.value.KanjiText,
+      FuriganaText: cardForm.value.FuriganaText.trim() || null,
+      Translation: cardForm.value.Translation
     }
+
+    if (editingCard.value) {
+      await updateCardWails(editingCard.value.ID, input)
+    } else {
+      await createCardWails(input)
+    }
+
     cardFormModalVisible.value = false
     editingCard.value = null
-    cardForm.value = { kanjiText: '', furiganaText: '', translation: '' }
+    cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
     await loadCards()
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка сохранения карточки:', e)
+    alert('Не удалось сохранить карточку: ' + e)
   }
 }
 </script>
@@ -194,6 +188,8 @@ const saveCard = async () => {
 <style scoped>
 .deck-manage {
   padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .header {
@@ -201,10 +197,32 @@ const saveCard = async () => {
   gap: 1rem;
   align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.header button {
+  white-space: nowrap;
 }
 
 .add-card {
   margin-bottom: 2rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #c7cdd8;
+  font-size: 1.1rem;
+}
+
+.data-table {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .form {
@@ -213,8 +231,13 @@ const saveCard = async () => {
   gap: 1rem;
 }
 
+.form label {
+  font-size: 0.9rem;
+  color: #c7cdd8;
+  margin-bottom: 0.25rem;
+}
+
 .danger {
-  background: #ff0a14;
-  border-color: #ff0a14;
+  background-color: #ff4444 !important;
 }
 </style>

@@ -6,10 +6,10 @@
     </div>
     <ProgressBar :value="progress" :show-value="false" />
     <div v-if="currentCard" class="card">
-      <div class="front">{{ currentCard.kanjiText }}</div>
+      <div class="front">{{ currentCard.KanjiText }}</div>
       <div v-if="showAnswer" class="back">
-        <FuriganaText :kanjiText="currentCard.kanjiText" :furiganaText="currentCard.furiganaText" />
-        <div class="translation">{{ currentCard.translation }}</div>
+        <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
+        <div class="translation">{{ currentCard.Translation }}</div>
       </div>
     </div>
     <div class="actions">
@@ -34,18 +34,14 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ProgressBar from 'primevue/progressbar'
 import FuriganaText from '../components/FuriganaText.vue'
-
-interface TrainingCard {
-  id: number
-  kanjiText: string
-  furiganaText?: string | null
-  translation: string
-}
+import type { TrainingCard as TrainingCardType } from '../types'
+import { useWails } from '../composables/useWails'
 
 const router = useRouter()
 const route = useRoute()
 const mode = route.query.mode as string
 const deckIds = (route.query.deckIds as string).split(',').map(Number)
+const { getTrainingCards, submitReview: submitReviewWails } = useWails()
 
 const modeLabel = computed(() => {
   const labels: Record<string, string> = {
@@ -56,7 +52,7 @@ const modeLabel = computed(() => {
   return labels[mode] || ''
 })
 
-const cards = ref<TrainingCard[]>([])
+const cards = ref<TrainingCardType[]>([])
 const currentIndex = ref(0)
 const currentCard = computed(() => cards.value[currentIndex.value])
 const showAnswer = ref(false)
@@ -80,10 +76,10 @@ onUnmounted(() => {
 
 const loadCards = async () => {
   try {
-    // @ts-ignore
-    cards.value = await window.go.main.App.GetTrainingCards(mode, deckIds)
+    cards.value = await getTrainingCards(mode, deckIds)
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка загрузки карточек для тренировки:', e)
+    alert('Не удалось загрузить карточки для тренировки: ' + e)
   }
 }
 
@@ -100,11 +96,11 @@ const speak = () => {
   if (!currentCard.value) return
   const synth = window.speechSynthesis
   synth.cancel()
-  const uttr1 = new SpeechSynthesisUtterance(currentCard.value.kanjiText)
+  const uttr1 = new SpeechSynthesisUtterance(currentCard.value.KanjiText)
   uttr1.lang = 'ja-JP'
   synth.speak(uttr1)
   setTimeout(() => {
-    const uttr2 = new SpeechSynthesisUtterance(currentCard.value.translation)
+    const uttr2 = new SpeechSynthesisUtterance(currentCard.value.Translation)
     uttr2.lang = 'ru-RU'
     synth.speak(uttr2)
   }, 500)
@@ -112,11 +108,13 @@ const speak = () => {
 
 const submitReview = async (grade: number) => {
   try {
-    // @ts-ignore
-    await window.go.main.App.SubmitReview(currentCard.value.id, grade)
+    if (currentCard.value) {
+      await submitReviewWails(currentCard.value.ID, grade)
+    }
     nextCard()
   } catch (e) {
-    console.error(e)
+    console.error('Ошибка отправки повторения:', e)
+    alert('Не удалось отправить повторение: ' + e)
   }
 }
 

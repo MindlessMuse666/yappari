@@ -6,19 +6,19 @@
 import { computed } from 'vue'
 
 interface Props {
-  kanjiText: string
-  furiganaText?: string | null
+  KanjiText: string
+  FuriganaText?: string | null
 }
 
 const props = defineProps<Props>()
 
 const rendered = computed(() => {
-  if (!props.furiganaText || props.furiganaText === props.kanjiText) {
-    return props.kanjiText
+  if (!props.FuriganaText || props.FuriganaText === props.KanjiText) {
+    return props.KanjiText
   }
 
-  const kanji = props.kanjiText
-  const furigana = props.furiganaText
+  const kanji = props.KanjiText
+  const furigana = props.FuriganaText
   let result = ''
   let kIndex = 0
   let fIndex = 0
