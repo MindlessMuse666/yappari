@@ -20,6 +20,7 @@ frontend/dist/
 
 # документация
 docs/commit-style-guide.md
+*.md
 
 # прочее
 .vscode/
