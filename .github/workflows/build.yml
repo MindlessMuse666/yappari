@@ -46,7 +46,7 @@ jobs:
         run: cd frontend && npm install
 
       - name: Run backend tests
-        run: go test ./... -count=1 -timeout 60s
+        run: go test ./backend/... -count=1 -timeout 60s
 
       - name: TypeScript check
         run: cd frontend && npx vue-tsc -b
