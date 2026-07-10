@@ -196,6 +196,14 @@ const goBack = () => {
   router.push({ name: 'Home' })
 }
 
+/** Escape на главную */
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    goBack()
+  }
+}
+
 /** Показывает ответ и запускает озвучку (яп + пауза + ру) */
 const showAnswerFn = () => {
   showAnswer.value = true
@@ -305,6 +313,8 @@ watch(currentIndex, () => {
 })
 
 onMounted(async () => {
+  document.addEventListener('keydown', onKeydown)
+
   // Защита: если не выбраны колоды — редирект
   if (deckIds.length === 0) {
     await alert({
@@ -336,6 +346,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
   stopAutoPlay()
 })
 </script>

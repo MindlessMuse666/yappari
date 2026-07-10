@@ -116,7 +116,7 @@
  * @module views/DeckManage
  */
 
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -171,6 +171,14 @@ const loadCards = async () => {
 
 /** Переход на главную */
 const goBack = () => router.push({ name: 'Home' })
+
+/** Escape → на главную (если не открыта модалка карточки) */
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && !cardFormModalVisible.value) {
+    e.preventDefault()
+    goBack()
+  }
+}
 
 /** Сохраняет новое название колоды по Enter */
 const updateDeckName = async () => {
@@ -314,8 +322,13 @@ const closeCardModal = () => {
 }
 
 onMounted(async () => {
+  document.addEventListener('keydown', onKeydown)
   await loadDeck()
   await loadCards()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 
