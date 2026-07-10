@@ -1,11 +1,23 @@
+<!--
+  Страница управления колодой.
+
+  Позволяет просматривать, создавать, редактировать и удалять
+  карточки, а также переименовывать или удалять саму колоду
+  и сбрасывать прогресс SM-2.
+-->
+
 <template>
   <div class="deck-manage">
     <div class="header">
       <button @click="goBack" class="icon-btn" title="Назад">
         <span class="icon">←</span>
       </button>
-      <InputText v-model="deckName" @keyup.enter="updateDeckName" placeholder="Название колоды"
-        class="deck-name-input" />
+      <InputText
+        v-model="deckName"
+        @keyup.enter="updateDeckName"
+        placeholder="Название колоды"
+        class="deck-name-input"
+      />
       <div class="header-actions">
         <button @click="resetDeckProgress" class="secondary-btn" title="Сбросить прогресс">
           Сбросить
@@ -35,30 +47,53 @@
         <div class="card-translation">
           <FuriganaText :KanjiText="card.Translation" Language="ru" />
         </div>
-        <button @click.stop="deleteCard(card.ID)" class="card-delete-btn" title="Удалить">
+        <button @click.stop="deleteCardById(card.ID)" class="card-delete-btn" title="Удалить">
           ×
         </button>
       </div>
     </div>
 
-    <Dialog v-model:visible="cardFormModalVisible" :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
-      class="custom-dialog" :closable="false">
-      <div class="form-content" :class="{ 'shake': shake }">
+    <!-- Модальное окно создания/редактирования карточки -->
+    <Dialog
+      v-model:visible="cardFormModalVisible"
+      :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
+      class="custom-dialog"
+      :closable="false"
+    >
+      <div class="form-content" :class="{ shake: shake }">
         <div class="input-group">
-          <label for="kanji-text">Японское слово <span class="required-asterisk">*</span></label>
-          <InputText id="kanji-text" v-model="cardForm.KanjiText" placeholder="Введите японское слово"
-            class="custom-input" :class="{ 'input-error': errors.kanjiText }" />
+          <label for="kanji-text">
+            Японское слово <span class="required-asterisk">*</span>
+          </label>
+          <InputText
+            id="kanji-text"
+            v-model="cardForm.KanjiText"
+            placeholder="Введите японское слово"
+            class="custom-input"
+            :class="{ 'input-error': errors.kanjiText }"
+          />
           <div v-if="errors.kanjiText" class="error">{{ errors.kanjiText }}</div>
         </div>
         <div class="input-group">
           <label for="furigana-text">Чтение (фуригана)</label>
-          <InputText id="furigana-text" v-model="cardForm.FuriganaText" placeholder="Введите чтение"
-            class="custom-input" />
+          <InputText
+            id="furigana-text"
+            v-model="cardForm.FuriganaText"
+            placeholder="Введите чтение"
+            class="custom-input"
+          />
         </div>
         <div class="input-group">
-          <label for="translation">Перевод <span class="required-asterisk">*</span></label>
-          <InputText id="translation" v-model="cardForm.Translation" placeholder="Введите перевод" class="custom-input"
-            :class="{ 'input-error': errors.translation }" />
+          <label for="translation">
+            Перевод <span class="required-asterisk">*</span>
+          </label>
+          <InputText
+            id="translation"
+            v-model="cardForm.Translation"
+            placeholder="Введите перевод"
+            class="custom-input"
+            :class="{ 'input-error': errors.translation }"
+          />
           <div v-if="errors.translation" class="error">{{ errors.translation }}</div>
         </div>
       </div>
@@ -71,6 +106,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Управление колодой: просмотр, создание, редактирование и удаление карточек.
+ *
+ * @module views/DeckManage
+ */
+
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Dialog from 'primevue/dialog'
@@ -83,39 +124,38 @@ import FuriganaText from '../components/FuriganaText.vue'
 
 const router = useRouter()
 const route = useRoute()
-const { getDecks, getCardsByDeck, updateDeck, resetDeckProgress: resetDeckProgressWails, deleteDeck: deleteDeckWails, createCard: createCardWails, updateCard: updateCardWails, deleteCard: deleteCardWails } = useWails()
+const {
+  getDecks, getCardsByDeck, updateDeck,
+  resetDeckProgress: resetDeckProgressWails,
+  deleteDeck: deleteDeckWails,
+  createCard: createCardWails,
+  updateCard: updateCardWails,
+  deleteCard: deleteCardWails,
+} = useWails()
 const { alert, confirm } = useAlert()
+
 const deckId = Number(route.params.id)
 const deckName = ref('')
 const cards = ref<Card[]>([])
 const cardFormModalVisible = ref(false)
 const editingCard = ref<Card | null>(null)
-const cardForm = ref({
-  KanjiText: '',
-  FuriganaText: '',
-  Translation: ''
-})
+const cardForm = ref({ KanjiText: '', FuriganaText: '', Translation: '' })
 const errors = ref({ kanjiText: '', translation: '' })
 const shake = ref(false)
 
-onMounted(async () => {
-  await loadDeck()
-  await loadCards()
-})
-
+/** Загружает данные колоды */
 const loadDeck = async () => {
   try {
     const decksList = await getDecks()
     const deck = decksList.find((d: Deck) => d.ID === deckId)
-    if (deck) {
-      deckName.value = deck.Name
-    }
+    if (deck) deckName.value = deck.Name
   } catch (e) {
     console.error('Ошибка загрузки колоды:', e)
     await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоду: ' + e })
   }
 }
 
+/** Загружает карточки колоды */
 const loadCards = async () => {
   try {
     cards.value = await getCardsByDeck(deckId)
@@ -125,10 +165,10 @@ const loadCards = async () => {
   }
 }
 
-const goBack = () => {
-  router.push({ name: 'Home' })
-}
+/** Переход на главную */
+const goBack = () => router.push({ name: 'Home' })
 
+/** Сохраняет новое название колоды по Enter */
 const updateDeckName = async () => {
   if (!deckName.value.trim()) return
   try {
@@ -139,8 +179,14 @@ const updateDeckName = async () => {
   }
 }
 
+/** Сброс прогресса всей колоды (с подтверждением) */
 const resetDeckProgress = async () => {
-  const ok = await confirm({ title: 'Сброс прогресса', message: 'Сбросить прогресс всей колоды?', confirmText: 'Сбросить', cancelText: 'Отмена' })
+  const ok = await confirm({
+    title: 'Сброс прогресса',
+    message: 'Сбросить прогресс всей колоды?',
+    confirmText: 'Сбросить',
+    cancelText: 'Отмена',
+  })
   if (!ok) return
   try {
     await resetDeckProgressWails(deckId)
@@ -151,8 +197,14 @@ const resetDeckProgress = async () => {
   }
 }
 
+/** Удаление колоды (с подтверждением) */
 const deleteDeck = async () => {
-  const ok = await confirm({ title: 'Удаление колоды', message: 'Удалить колоду и все карточки? Это действие необратимо.', confirmText: 'Удалить', cancelText: 'Отмена' })
+  const ok = await confirm({
+    title: 'Удаление колоды',
+    message: 'Удалить колоду и все карточки? Это действие необратимо.',
+    confirmText: 'Удалить',
+    cancelText: 'Отмена',
+  })
   if (!ok) return
   try {
     await deleteDeckWails(deckId)
@@ -163,13 +215,13 @@ const deleteDeck = async () => {
   }
 }
 
+/** Анимация встряхивания при ошибке валидации */
 const triggerShake = () => {
   shake.value = true
-  setTimeout(() => {
-    shake.value = false
-  }, 500)
+  setTimeout(() => { shake.value = false }, 500)
 }
 
+/** Валидация формы карточки */
 const validateCardForm = (): boolean => {
   errors.value = { kanjiText: '', translation: '' }
   let valid = true
@@ -189,18 +241,25 @@ const validateCardForm = (): boolean => {
   return valid
 }
 
+/** Открывает форму редактирования карточки */
 const editCard = (card: Card) => {
   editingCard.value = card
   cardForm.value = {
     KanjiText: card.KanjiText,
     FuriganaText: card.FuriganaText || '',
-    Translation: card.Translation
+    Translation: card.Translation,
   }
   cardFormModalVisible.value = true
 }
 
-const deleteCard = async (id: number) => {
-  const ok = await confirm({ title: 'Удаление карточки', message: 'Удалить карточку?', confirmText: 'Удалить', cancelText: 'Отмена' })
+/** Удаление карточки (с подтверждением) */
+const deleteCardById = async (id: number) => {
+  const ok = await confirm({
+    title: 'Удаление карточки',
+    message: 'Удалить карточку?',
+    confirmText: 'Удалить',
+    cancelText: 'Отмена',
+  })
   if (!ok) return
   try {
     await deleteCardWails(id)
@@ -211,6 +270,7 @@ const deleteCard = async (id: number) => {
   }
 }
 
+/** Сохраняет карточку (создаёт или обновляет) */
 const saveCard = async () => {
   if (!validateCardForm()) return
 
@@ -219,7 +279,7 @@ const saveCard = async () => {
       DeckID: deckId,
       KanjiText: cardForm.value.KanjiText,
       FuriganaText: cardForm.value.FuriganaText.trim() || null,
-      Translation: cardForm.value.Translation
+      Translation: cardForm.value.Translation,
     }
 
     if (editingCard.value) {
@@ -236,12 +296,18 @@ const saveCard = async () => {
   }
 }
 
+/** Закрывает форму и сбрасывает состояние */
 const closeCardModal = () => {
   cardFormModalVisible.value = false
   editingCard.value = null
   cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
   errors.value = { kanjiText: '', translation: '' }
 }
+
+onMounted(async () => {
+  await loadDeck()
+  await loadCards()
+})
 </script>
 
 <style scoped>
@@ -363,19 +429,9 @@ const closeCardModal = () => {
 }
 
 @keyframes shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  25% {
-    transform: translateX(-5px);
-  }
-
-  75% {
-    transform: translateX(5px);
-  }
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
 .input-group {

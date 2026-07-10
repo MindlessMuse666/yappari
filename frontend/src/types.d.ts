@@ -1,9 +1,20 @@
+/**
+ * Глобальные типы и интерфейсы данных Yappari.
+ *
+ * Содержит описание структур данных, передаваемых между
+ * фронтендом и бэкендом через Wails IPC.
+ *
+ * @module types
+ */
+
+/** Колода карточек */
 export interface Deck {
   ID: number
   Name: string
   CreatedAt: string
 }
 
+/** Карточка с полным набором полей SM-2 */
 export interface Card {
   ID: number
   DeckID: number
@@ -19,6 +30,7 @@ export interface Card {
   UpdatedAt: string
 }
 
+/** Входные данные для создания/редактирования карточки */
 export interface CardInput {
   DeckID: number
   KanjiText: string
@@ -26,6 +38,7 @@ export interface CardInput {
   Translation: string
 }
 
+/** Карточка для тренировки (без SM-2 полей) */
 export interface TrainingCard {
   ID: number
   KanjiText: string
@@ -33,11 +46,24 @@ export interface TrainingCard {
   Translation: string
 }
 
+/** Статус доступности голосов TTS */
 export interface VoiceStatus {
   Ja: boolean
   Ru: boolean
 }
 
+/** Тип expose-методов компонента CustomAlert */
+export interface CustomAlertExposed {
+  show: (params: { title?: string; message: string; buttonText?: string }) => Promise<void>
+  confirm: (params: { title?: string; message: string; confirmText?: string; cancelText?: string }) => Promise<boolean>
+}
+
+/**
+ * Глобальная декларация Wails IPC.
+ *
+ * Все методы бэкенда, экспортируемые через Wails, доступны
+ * через `window.go.main.App.*`.
+ */
 declare global {
   interface Window {
     go: {

@@ -1,7 +1,20 @@
+<!--
+  Корневой компонент приложения.
+
+  Содержит глобальный контейнер с тёмной темой, вывод маршрутов
+  через `<router-view>` и модальное окно CustomAlert.
+-->
+
 <script setup lang="ts">
+/**
+ * Корневой компонент Yappari.
+ *
+ * @module App
+ */
+
+import { ref, onMounted } from 'vue'
 import CustomAlert from './components/CustomAlert.vue'
 import { useAlert } from './composables/useAlert'
-import { ref, onMounted } from 'vue'
 
 const alertRef = ref<InstanceType<typeof CustomAlert>>()
 const { registerAlert } = useAlert()

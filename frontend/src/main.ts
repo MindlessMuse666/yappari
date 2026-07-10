@@ -1,3 +1,11 @@
+/**
+ * Точка входа Vue-приложения.
+ *
+ * Инициализирует Vue 3, подключает роутер и PrimeVue.
+ *
+ * @module main
+ */
+
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'

@@ -1,3 +1,10 @@
+<!--
+  Кастомное модальное окно для alert/confirm.
+
+  Использует Teleport для рендеринга поверх всего приложения.
+  Поддерживает два режима: alert (одна кнопка) и confirm (две кнопки).
+-->
+
 <template>
   <Teleport to="body">
     <Transition name="alert">
@@ -10,11 +17,11 @@
             <p class="alert-message">{{ message }}</p>
           </div>
           <div class="alert-footer">
-            <!-- Alert: одна кнопка -->
+            <!-- Режим alert: одна кнопка -->
             <button v-if="mode === 'alert'" ref="mainBtn" @click="close" class="alert-btn primary">
               {{ buttonText }}
             </button>
-            <!-- Confirm: две кнопки -->
+            <!-- Режим confirm: две кнопки -->
             <template v-else>
               <button ref="mainBtn" @click="confirmAction(false)" class="alert-btn secondary">
                 {{ cancelText }}
@@ -31,6 +38,22 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Компонент кастомного модального окна с alert/confirm.
+ *
+ * Предоставляет методы `show` (для alert) и `confirm` (для confirm),
+ * которые возвращают Promise. Используется через композабл useAlert.
+ *
+ * @example
+ * ```ts
+ * const { alert, confirm } = useAlert()
+ * await alert({ title: 'Ошибка', message: 'Что-то пошло не так' })
+ * const ok = await confirm({ title: 'Удалить?', message: 'Вы уверены?' })
+ * ```
+ *
+ * @module components/CustomAlert
+ */
+
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 
 const visible = ref(false)
@@ -45,7 +68,7 @@ const mainBtn = ref<HTMLButtonElement | null>(null)
 let resolveCallback: (() => void) | null = null
 let confirmResolveCallback: ((value: boolean) => void) | null = null
 
-// Alert — одна кнопка, просто закрыть
+/** Показывает alert-окно с одной кнопкой */
 const show = (params: { title?: string; message: string; buttonText?: string }): Promise<void> => {
   return new Promise((resolve) => {
     mode.value = 'alert'
@@ -58,8 +81,10 @@ const show = (params: { title?: string; message: string; buttonText?: string }):
   })
 }
 
-// Confirm — две кнопки, вернуть boolean
-const confirm = (params: { title?: string; message: string; confirmText?: string; cancelText?: string }): Promise<boolean> => {
+/** Показывает confirm-окно с двумя кнопками и возвращает boolean */
+const confirm = (
+  params: { title?: string; message: string; confirmText?: string; cancelText?: string }
+): Promise<boolean> => {
   return new Promise((resolve) => {
     mode.value = 'confirm'
     title.value = params.title || 'Подтверждение'
@@ -72,6 +97,7 @@ const confirm = (params: { title?: string; message: string; confirmText?: string
   })
 }
 
+/** Закрывает alert-окно */
 const close = () => {
   visible.value = false
   if (resolveCallback) {
@@ -80,6 +106,7 @@ const close = () => {
   }
 }
 
+/** Обрабатывает результат confirm */
 const confirmAction = (value: boolean) => {
   visible.value = false
   if (confirmResolveCallback) {
@@ -88,14 +115,14 @@ const confirmAction = (value: boolean) => {
   }
 }
 
+/** В alert-режиме клик по оверлею закрывает, в confirm — нет */
 const handleOverlayClick = () => {
-  // В alert-режиме клик по оверлею закрывает, в confirm — нет (чтобы случайно не подтвердить)
   if (mode.value === 'alert') {
     close()
   }
 }
 
-// Esc — отмена/закрытие
+/** Обработчик клавиши Escape */
 const onKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && visible.value) {
     if (mode.value === 'confirm') {
@@ -217,20 +244,24 @@ defineExpose({ show, confirm })
   outline-offset: 3px;
 }
 
-/* Анимация */
+/* Анимации */
 .alert-enter-active {
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
 .alert-leave-active {
   transition: all 0.15s ease;
 }
+
 .alert-enter-from,
 .alert-leave-to {
   opacity: 0;
 }
+
 .alert-enter-from .alert-modal {
   transform: scale(0.85) translateY(-30px);
 }
+
 .alert-leave-to .alert-modal {
   transform: scale(0.9) translateY(10px);
 }

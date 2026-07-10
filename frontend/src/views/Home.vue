@@ -1,7 +1,20 @@
+<!--
+  Главная страница приложения.
+
+  Отображает список колод с чекбоксами для выбора, кнопки
+  создания колоды и перехода к тренировке, а также модальное
+  окно для создания новой колоды.
+-->
+
 <template>
   <div class="home">
     <div class="header">
-      <img src="/yappari_logo.png" alt="Yappari Logo" class="logo" draggable="false" />
+      <img
+        src="/yappari_logo.png"
+        alt="Yappari Logo"
+        class="logo"
+        draggable="false"
+      />
       <h1>Yappari</h1>
     </div>
 
@@ -10,7 +23,11 @@
         <span class="icon">+</span>
         Новая колода
       </button>
-      <button v-if="decks.length > 0" @click="toggleSelectAll" class="primary-btn select-all-btn">
+      <button
+        v-if="decks.length > 0"
+        @click="toggleSelectAll"
+        class="primary-btn select-all-btn"
+      >
         {{ allSelected ? 'Сбросить все' : 'Выбрать все' }}
       </button>
     </div>
@@ -22,58 +39,112 @@
     <div v-else class="deck-list">
       <div v-for="deck in decks" :key="deck.ID" class="deck-item">
         <label class="deck-checkbox-wrapper" :for="`deck-${deck.ID}`">
-          <input type="checkbox" :id="`deck-${deck.ID}`" v-model="selectedDeckIds" :value="deck.ID" />
+          <input
+            type="checkbox"
+            :id="`deck-${deck.ID}`"
+            v-model="selectedDeckIds"
+            :value="deck.ID"
+          />
           <span class="deck-name">{{ deck.Name }}</span>
         </label>
-        <button @click.stop="goToDeck(deck.ID)" class="gear-btn" title="Управлять колодой">
+        <button
+          @click.stop="goToDeck(deck.ID)"
+          class="gear-btn"
+          title="Управлять колодой"
+        >
           ⚙️
         </button>
       </div>
     </div>
 
     <div v-if="decks.length > 0" class="training-buttons">
+      <!-- Кнопка: Интервальное повторение -->
       <div class="training-btn-wrapper">
-        <button @click="startTraining('interval')" :disabled="selectedDeckIds.length === 0" class="training-btn">
+        <button
+          @click="startTraining('interval')"
+          :disabled="selectedDeckIds.length === 0"
+          class="training-btn"
+        >
           Повторение
         </button>
-        <div class="corner-trigger" @mouseenter="activePopover = 'interval'" @mouseleave="onLeavePopover"
-          @click="startTraining('interval')">
+        <div
+          class="corner-trigger"
+          @mouseenter="activePopover = 'interval'"
+          @mouseleave="onLeavePopover"
+          @click="startTraining('interval')"
+        >
           <span class="corner-fold">✦</span>
         </div>
         <Transition name="popover">
-          <div v-if="activePopover === 'interval'" class="legend-popover" @mouseenter="clearPopoverTimer"
-            @mouseleave="onLeavePopover">
+          <div
+            v-if="activePopover === 'interval'"
+            class="legend-popover"
+            @mouseenter="clearPopoverTimer"
+            @mouseleave="onLeavePopover"
+          >
             <strong class="popover-title">Интервальное повторение</strong>
-            <p class="popover-desc">Умная система SM-2 следит за твоими успехами и подсовывает карточки ровно в тот
-              момент, когда ты начинаешь их забывать.</p>
+            <p class="popover-desc">
+              Умная система SM-2 следит за твоими успехами и подсовывает
+              карточки ровно в тот момент, когда ты начинаешь их забывать.
+            </p>
           </div>
         </Transition>
       </div>
+
+      <!-- Кнопка: Свободный режим -->
       <div class="training-btn-wrapper">
-        <button @click="startTraining('free')" :disabled="selectedDeckIds.length === 0" class="training-btn">
+        <button
+          @click="startTraining('free')"
+          :disabled="selectedDeckIds.length === 0"
+          class="training-btn"
+        >
           Свободный режим
         </button>
-        <div class="corner-trigger" @mouseenter="activePopover = 'free'" @mouseleave="onLeavePopover"
-          @click="startTraining('free')">
+        <div
+          class="corner-trigger"
+          @mouseenter="activePopover = 'free'"
+          @mouseleave="onLeavePopover"
+          @click="startTraining('free')"
+        >
           <span class="corner-fold">✦</span>
         </div>
         <Transition name="popover">
-          <div v-if="activePopover === 'free'" class="legend-popover" @mouseenter="clearPopoverTimer"
-            @mouseleave="onLeavePopover">
+          <div
+            v-if="activePopover === 'free'"
+            class="legend-popover"
+            @mouseenter="clearPopoverTimer"
+            @mouseleave="onLeavePopover"
+          >
             <strong class="popover-title">Свободный режим</strong>
-            <p class="popover-desc">Свободный темп + автовоспроизведение по желанию. Можно включить карточки как фоновую
-              "ленту" и запоминать пассивно.</p>
+            <p class="popover-desc">
+              Свободный темп + автовоспроизведение по желанию. Можно включить
+              карточки как фоновую "ленту" и запоминать пассивно.
+            </p>
           </div>
         </Transition>
       </div>
     </div>
 
-    <Dialog v-model:visible="createDeckModalVisible" header="Создать колоду" class="custom-dialog" :closable="false">
-      <div class="form-content" :class="{ 'shake': shake }">
+    <!-- Модальное окно создания колоды -->
+    <Dialog
+      v-model:visible="createDeckModalVisible"
+      header="Создать колоду"
+      class="custom-dialog"
+      :closable="false"
+    >
+      <div class="form-content" :class="{ shake: shake }">
         <div class="input-group">
-          <label for="deck-name">Название колоды <span class="required-asterisk">*</span></label>
-          <InputText id="deck-name" v-model="newDeckName" placeholder="Введите название колоды" class="custom-input"
-            :class="{ 'input-error': errors.deckName }" @keyup.enter="createDeck" />
+          <label for="deck-name">
+            Название колоды <span class="required-asterisk">*</span>
+          </label>
+          <InputText
+            id="deck-name"
+            v-model="newDeckName"
+            placeholder="Введите название колоды"
+            class="custom-input"
+            :class="{ 'input-error': errors.deckName }"
+            @keyup.enter="createDeck"
+          />
           <div v-if="errors.deckName" class="error">{{ errors.deckName }}</div>
         </div>
       </div>
@@ -86,6 +157,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Главная страница: список колод и выбор режима тренировки.
+ *
+ * @module views/Home
+ */
+
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
@@ -98,6 +175,7 @@ import { useAlert } from '../composables/useAlert'
 const router = useRouter()
 const { getDecks, createDeck: createDeckWails } = useWails()
 const { alert } = useAlert()
+
 const decks = ref<Deck[]>([])
 const selectedDeckIds = ref<number[]>([])
 const createDeckModalVisible = ref(false)
@@ -106,34 +184,14 @@ const isLoading = ref(false)
 const errors = ref({ deckName: '' })
 const shake = ref(false)
 const activePopover = ref<string | null>(null)
-let popoverTimer: number | null = null
+let popoverTimer: ReturnType<typeof setTimeout> | null = null
 
-const clearPopoverTimer = () => {
-  if (popoverTimer !== null) {
-    clearTimeout(popoverTimer)
-    popoverTimer = null
-  }
-}
+/** Выбраны ли все колоды */
+const allSelected = computed(
+  () => decks.value.length > 0 && selectedDeckIds.value.length === decks.value.length
+)
 
-const onLeavePopover = () => {
-  clearPopoverTimer()
-  popoverTimer = window.setTimeout(() => {
-    activePopover.value = null
-  }, 250)
-}
-
-onMounted(async () => {
-  const saved = localStorage.getItem('selectedDeckIds')
-  if (saved) {
-    selectedDeckIds.value = JSON.parse(saved)
-  }
-  await loadDecks()
-})
-
-watch(selectedDeckIds, (newVal) => {
-  localStorage.setItem('selectedDeckIds', JSON.stringify(newVal))
-})
-
+/** Загружает колоды с бэкенда */
 const loadDecks = async () => {
   try {
     isLoading.value = true
@@ -146,13 +204,7 @@ const loadDecks = async () => {
   }
 }
 
-const triggerShake = () => {
-  shake.value = true
-  setTimeout(() => {
-    shake.value = false
-  }, 500)
-}
-
+/** Валидирует форму создания колоды */
 const validateForm = (): boolean => {
   errors.value = { deckName: '' }
   if (!newDeckName.value.trim()) {
@@ -168,9 +220,15 @@ const validateForm = (): boolean => {
   return true
 }
 
+/** Анимация встряхивания при ошибке валидации */
+const triggerShake = () => {
+  shake.value = true
+  setTimeout(() => { shake.value = false }, 500)
+}
+
+/** Создаёт новую колоду */
 const createDeck = async () => {
   if (!validateForm()) return
-
   try {
     isLoading.value = true
     await createDeckWails(newDeckName.value.trim())
@@ -184,25 +242,28 @@ const createDeck = async () => {
   }
 }
 
+/** Закрывает модалку создания колоды и сбрасывает форму */
 const closeCreateModal = () => {
   createDeckModalVisible.value = false
   newDeckName.value = ''
   errors.value = { deckName: '' }
 }
 
+/** Переход на страницу управления колодой */
 const goToDeck = (id: number) => {
   router.push({ name: 'DeckManage', params: { id } })
 }
 
+/** Переход к тренировке */
 const startTraining = (mode: string) => {
   if (selectedDeckIds.value.length === 0) return
-  router.push({ name: 'Training', query: { mode, deckIds: selectedDeckIds.value.join(',') } })
+  router.push({
+    name: 'Training',
+    query: { mode, deckIds: selectedDeckIds.value.join(',') },
+  })
 }
 
-const allSelected = computed(() => {
-  return decks.value.length > 0 && selectedDeckIds.value.length === decks.value.length
-})
-
+/** Выделить / снять выделение со всех колод */
 const toggleSelectAll = () => {
   if (allSelected.value) {
     selectedDeckIds.value = []
@@ -210,6 +271,33 @@ const toggleSelectAll = () => {
     selectedDeckIds.value = decks.value.map(d => d.ID)
   }
 }
+
+/** Сброс таймера поповера */
+const clearPopoverTimer = () => {
+  if (popoverTimer !== null) {
+    clearTimeout(popoverTimer)
+    popoverTimer = null
+  }
+}
+
+/** Запуск таймера скрытия поповера */
+const onLeavePopover = () => {
+  clearPopoverTimer()
+  popoverTimer = setTimeout(() => { activePopover.value = null }, 250)
+}
+
+onMounted(async () => {
+  const saved = localStorage.getItem('selectedDeckIds')
+  if (saved) {
+    selectedDeckIds.value = JSON.parse(saved)
+  }
+  await loadDecks()
+})
+
+/** Сохраняет выбранные колоды в localStorage */
+watch(selectedDeckIds, (newVal) => {
+  localStorage.setItem('selectedDeckIds', JSON.stringify(newVal))
+})
 </script>
 
 <style scoped>
@@ -379,29 +467,6 @@ const toggleSelectAll = () => {
   cursor: not-allowed;
 }
 
-.secondary-btn {
-  background-color: #222222;
-  color: white;
-  border: 1px solid #333333;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 600;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.secondary-btn:hover {
-  background-color: #333333;
-  border-color: #ff0a14;
-  transform: translateY(-2px);
-}
-
 .training-buttons {
   display: flex;
   gap: 1rem;
@@ -438,7 +503,6 @@ const toggleSelectAll = () => {
   cursor: not-allowed;
 }
 
-/* Corner fold + popover info card */
 .corner-trigger {
   position: absolute;
   top: 0;
@@ -473,7 +537,6 @@ const toggleSelectAll = () => {
   color: #ffffff;
 }
 
-/* Popover card — справа от уголка */
 .legend-popover {
   position: absolute;
   bottom: calc(100% + 20px);
@@ -502,7 +565,6 @@ const toggleSelectAll = () => {
   margin: 0;
 }
 
-/* Popover transition */
 .popover-enter-active {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -530,19 +592,9 @@ const toggleSelectAll = () => {
 }
 
 @keyframes shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  25% {
-    transform: translateX(-5px);
-  }
-
-  75% {
-    transform: translateX(5px);
-  }
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
 .input-group {

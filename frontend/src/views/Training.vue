@@ -16,17 +16,20 @@
       <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
         <div class="card-inner">
           <div class="card-front">
-            <div class="text" @click="speakJapanese">{{ currentCard.KanjiText }}</div>
+            <div class="text" @click="speakJapaneseOnly">{{ currentCard.KanjiText }}</div>
           </div>
           <div class="card-back">
             <div class="word-section">
-              <div class="text clickable" @click="speakJapanese">
-                <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
+              <div class="text clickable" @click="speakJapaneseOnly">
+                <FuriganaText
+                  :KanjiText="currentCard.KanjiText"
+                  :FuriganaText="currentCard.FuriganaText"
+                />
               </div>
             </div>
             <div class="separator"></div>
             <div class="translation-section">
-              <div class="text clickable" @click="speakRussian">{{ currentCard.Translation }}</div>
+              <div class="text clickable" @click="speakRussianOnly">{{ currentCard.Translation }}</div>
             </div>
           </div>
         </div>
@@ -36,7 +39,11 @@
     <div v-if="!isFinished" class="actions">
       <div class="action-buttons">
         <template v-if="mode === 'interval'">
-          <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
+          <button
+            v-if="!showAnswer"
+            @click="showAnswerFn"
+            class="primary-btn large"
+          >
             Показать ответ
           </button>
           <template v-else>
@@ -59,14 +66,26 @@
           </template>
         </template>
         <template v-else>
-          <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
+          <button
+            @click="toggleAutoPlay"
+            class="auto-play-btn secondary-btn"
+            :class="{ active: isAutoPlaying }"
+          >
             {{ isAutoPlaying ? 'Остановить' : 'Авто' }}
           </button>
           <template v-if="!isAutoPlaying">
-            <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
+            <button
+              v-if="!showAnswer"
+              @click="showAnswerFn"
+              class="primary-btn large"
+            >
               Показать ответ
             </button>
-            <button v-else @click="nextCard" class="primary-btn large">
+            <button
+              v-else
+              @click="nextCard"
+              class="primary-btn large"
+            >
               Далее
             </button>
           </template>
@@ -88,6 +107,21 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Компонент тренировки (повторение карточек).
+ *
+ * Поддерживает два режима:
+ * - `interval` — интервальное повторение с оценкой SM-2 (grade 0/3/4/5)
+ * - `free` — свободный режим с опциональным автовоспроизведением
+ *
+ * В режиме `interval` после показа ответа пользователь выбирает одну из
+ * четырёх оценок, и карточка уходит из стопки.
+ * В режиме `free` — только кнопка "Далее".
+ *
+ * @see {@link module:composables/useWails} для IPC-операций
+ * @see {@link module:composables/useTts} для озвучки
+ */
+
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ProgressBar from 'primevue/progressbar'
@@ -95,27 +129,33 @@ import FuriganaText from '../components/FuriganaText.vue'
 import type { TrainingCard as TrainingCardType } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
-import confetti from 'canvas-confetti'
+import { speakBoth, speakJapanese, speakRussian, checkEdgeTTS } from '../composables/useTts'
+import { triggerConfetti } from '../utils/confetti'
 
 const router = useRouter()
 const route = useRoute()
 const { alert } = useAlert()
-const mode = computed(() => {
-  const m = route.query.mode as string
-  // Поддерживаем старые режимы для обратной совместимости
-  if (m === 'normal' || m === 'lazy') return 'free'
-  return m || 'interval'
-})
+const { isWails, getTrainingCards, submitReview: submitReviewWails } = useWails()
+
+/** ID выбранных колод из query-параметров */
 const rawDeckIds = route.query.deckIds as string | undefined
 const deckIds = rawDeckIds
   ? rawDeckIds.split(',').map(Number).filter(id => !isNaN(id))
   : []
-const { isWails, getTrainingCards, submitReview: submitReviewWails, speakText, checkEdgeTTS } = useWails()
 
+/** Режим тренировки: `interval` или `free` */
+const mode = computed(() => {
+  const m = route.query.mode as string
+  // Поддерживаем старые названия режимов для обратной совместимости
+  if (m === 'normal' || m === 'lazy') return 'free'
+  return m || 'interval'
+})
+
+/** Человекочитаемое название режима */
 const modeLabel = computed(() => {
   const labels: Record<string, string> = {
     interval: 'Повторение',
-    free: 'Свободный режим'
+    free: 'Свободный режим',
   }
   return labels[mode.value] || ''
 })
@@ -127,81 +167,156 @@ const showAnswer = ref(false)
 const isFinished = computed(() => currentIndex.value >= cards.value.length)
 const progress = computed(() => {
   if (cards.value.length === 0) return 0
-  return ((currentIndex.value) / cards.value.length) * 100
+  return (currentIndex.value / cards.value.length) * 100
 })
 
-// Автовоспроизведение
+/** Флаг: включён ли авто-режим (только свободный режим) */
 const isAutoPlaying = ref(false)
-let lazyTimer: number | null = null
-let answerTimer: number | null = null
+let lazyTimer: ReturnType<typeof setTimeout> | null = null
+let answerTimer: ReturnType<typeof setTimeout> | null = null
 
-// Голосовые функции (edge-tts через Go backend, Web Speech API fallback в dev)
-const playAudio = (base64: string): Promise<void> => {
-  if (!base64) return Promise.resolve() // Web Speech API fallback уже воспроизвёл
-  return new Promise((resolve) => {
-    const audio = new Audio('data:audio/mp3;base64,' + base64)
-    audio.onended = () => resolve()
-    audio.onerror = () => resolve()
-    audio.play().catch(() => resolve())
-  })
-}
-
-const speakJapanese = async () => {
-  if (!currentCard.value) return
+/** Загружает карточки с бэкенда */
+const loadCards = async () => {
   try {
-    const audio = await speakText(currentCard.value.KanjiText, 'ja-JP')
-    await playAudio(audio)
+    // Для free режима используем `normal` на бэке
+    const backendMode = mode.value === 'free' ? 'normal' : mode.value
+    cards.value = await getTrainingCards(backendMode, deckIds)
   } catch (e) {
-    console.error('Ошибка озвучки (ja):', e)
-    if (isWails) {
-      await alert({ title: 'Ошибка озвучки', message: 'Не удалось воспроизвести японскую озвучку. Убедитесь, что установлен edge-tts (pip install edge-tts).' })
-    }
+    console.error('Ошибка загрузки карточек для тренировки:', e)
+    await alert({
+      title: 'Ошибка',
+      message: 'Не удалось загрузить карточки для тренировки: ' + e,
+    })
   }
 }
 
-const speakRussian = async () => {
-  if (!currentCard.value) return
-  try {
-    const audio = await speakText(currentCard.value.Translation, 'ru-RU')
-    await playAudio(audio)
-  } catch (e) {
-    console.error('Ошибка озвучки (ru):', e)
-    if (isWails) {
-      await alert({ title: 'Ошибка озвучки', message: 'Не удалось воспроизвести русскую озвучку. Убедитесь, что установлен edge-tts (pip install edge-tts).' })
-    }
+/** Переход на главную с очисткой таймеров */
+const goBack = () => {
+  stopAutoPlay()
+  router.push({ name: 'Home' })
+}
+
+/** Показывает ответ и запускает озвучку (яп + пауза + ру) */
+const showAnswerFn = () => {
+  showAnswer.value = true
+  if (currentCard.value) {
+    speakBoth(currentCard.value.KanjiText, currentCard.value.Translation)
   }
 }
 
-const speak = async () => {
-  if (!currentCard.value) return
-  try {
-    const audioJa = await speakText(currentCard.value.KanjiText, 'ja-JP')
-    await playAudio(audioJa)
-
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    if (!currentCard.value) return
-    const audioRu = await speakText(currentCard.value.Translation, 'ru-RU')
-    await playAudio(audioRu)
-  } catch (e) {
-    console.error('Ошибка озвучки:', e)
-    if (isWails) {
-      await alert({ title: 'Ошибка озвучки', message: 'Не удалось воспроизвести озвучку. Убедитесь, что установлен edge-tts (pip install edge-tts).' })
-    }
+/** Озвучка только японского текста */
+const speakJapaneseOnly = () => {
+  if (currentCard.value) {
+    speakJapanese(currentCard.value.KanjiText)
   }
 }
+
+/** Озвучка только русского перевода */
+const speakRussianOnly = () => {
+  if (currentCard.value) {
+    speakRussian(currentCard.value.Translation)
+  }
+}
+
+/** Отправляет оценку SM-2 и переходит к следующей карточке */
+const submitReview = async (grade: number) => {
+  try {
+    if (currentCard.value) {
+      await submitReviewWails(currentCard.value.ID, grade)
+    }
+    nextCard()
+  } catch (e) {
+    console.error('Ошибка отправки повторения:', e)
+    await alert({
+      title: 'Ошибка',
+      message: 'Не удалось отправить повторение: ' + e,
+    })
+  }
+}
+
+/** Переходит к следующей карточке (с задержкой для анимации) */
+const nextCard = () => {
+  showAnswer.value = false
+  setTimeout(() => {
+    currentIndex.value++
+    nextTick(() => {
+      if (isFinished.value) {
+        triggerConfetti()
+      }
+    })
+  }, 50)
+}
+
+/** Переключает авто-режим */
+const toggleAutoPlay = () => {
+  if (isAutoPlaying.value) {
+    stopAutoPlay()
+  } else {
+    startAutoPlay()
+  }
+}
+
+/** Запускает авто-режим: вопрос → 2c → ответ + озвучка → 3.5c → далее */
+const startAutoPlay = () => {
+  isAutoPlaying.value = true
+  processAutoPlayStep()
+}
+
+/** Останавливает авто-режим */
+const stopAutoPlay = () => {
+  isAutoPlaying.value = false
+  if (lazyTimer) { clearTimeout(lazyTimer); lazyTimer = null }
+  if (answerTimer) { clearTimeout(answerTimer); answerTimer = null }
+}
+
+/** Выполняет один шаг авто-режима */
+const processAutoPlayStep = () => {
+  if (!isAutoPlaying.value || isFinished.value) {
+    stopAutoPlay()
+    return
+  }
+
+  lazyTimer = setTimeout(() => {
+    if (!isAutoPlaying.value || isFinished.value) return
+
+    showAnswerFn()
+
+    answerTimer = setTimeout(() => {
+      if (!isAutoPlaying.value || isFinished.value) return
+      nextCard()
+      processAutoPlayStep()
+    }, 3500)
+  }, 2000)
+}
+
+/** При ручном показе ответа — отменяем таймер вопроса */
+watch(showAnswer, () => {
+  if (showAnswer.value && isAutoPlaying.value) {
+    if (lazyTimer) { clearTimeout(lazyTimer); lazyTimer = null }
+  }
+})
+
+/** При смене карточки в авто-режиме — продолжаем цикл */
+watch(currentIndex, () => {
+  if (isAutoPlaying.value && !isFinished.value) {
+    if (answerTimer) { clearTimeout(answerTimer); answerTimer = null }
+    processAutoPlayStep()
+  }
+})
 
 onMounted(async () => {
-  // Защита: если не выбраны колоды — редирект на главную
+  // Защита: если не выбраны колоды — редирект
   if (deckIds.length === 0) {
-    await alert({ title: 'Ошибка', message: 'Не выбраны колоды для тренировки. Вернитесь на главную и выберите хотя бы одну колоду.' })
+    await alert({
+      title: 'Ошибка',
+      message: 'Не выбраны колоды для тренировки. Вернитесь на главную и выберите хотя бы одну колоду.',
+    })
     router.push({ name: 'Home' })
     return
   }
 
   await loadCards()
 
-  // Если карточки не загрузились (нет карточек в колоде / ошибка) — редирект
   if (cards.value.length === 0) {
     router.push({ name: 'Home' })
     return
@@ -222,146 +337,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopAutoPlay()
-})
-
-const loadCards = async () => {
-  try {
-    // Для free режима используем normal
-    const backendMode = mode.value === 'free' ? 'normal' : mode.value
-    cards.value = await getTrainingCards(backendMode, deckIds)
-  } catch (e) {
-    console.error('Ошибка загрузки карточек для тренировки:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось загрузить карточки для тренировки: ' + e })
-  }
-}
-
-const goBack = () => {
-  stopAutoPlay()
-  router.push({ name: 'Home' })
-}
-
-const showAnswerFn = () => {
-  showAnswer.value = true
-  speak()
-}
-
-const submitReview = async (grade: number) => {
-  try {
-    if (currentCard.value) {
-      await submitReviewWails(currentCard.value.ID, grade)
-    }
-    nextCard()
-  } catch (e) {
-    console.error('Ошибка отправки повторения:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось отправить повторение: ' + e })
-  }
-}
-
-const nextCard = () => {
-  // First hide the answer
-  showAnswer.value = false
-  // Wait a tiny bit for the animation to start, then update index
-  setTimeout(() => {
-    currentIndex.value++
-    // Check if we just finished
-    nextTick(() => {
-      if (isFinished.value) {
-        triggerConfetti()
-      }
-    })
-  }, 50)
-}
-
-const triggerConfetti = () => {
-  const duration = 3 * 1000
-  const animationEnd = Date.now() + duration
-  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
-
-  const random = (min: number, max: number) => Math.random() * (max - min) + min
-
-  const interval: any = setInterval(() => {
-    const timeLeft = animationEnd - Date.now()
-
-    if (timeLeft <= 0) {
-      return clearInterval(interval)
-    }
-
-    const particleCount = 50 * (timeLeft / duration)
-    // since particles fall down, start a bit higher than random
-    confetti({ ...defaults, particleCount, origin: { x: random(0, 1), y: Math.random() - 0.2 } })
-  }, 250)
-}
-
-const toggleAutoPlay = () => {
-  if (isAutoPlaying.value) {
-    stopAutoPlay()
-  } else {
-    startAutoPlay()
-  }
-}
-
-const startAutoPlay = () => {
-  isAutoPlaying.value = true
-  processAutoPlayStep()
-}
-
-const stopAutoPlay = () => {
-  isAutoPlaying.value = false
-  if (lazyTimer) {
-    clearTimeout(lazyTimer)
-    lazyTimer = null
-  }
-  if (answerTimer) {
-    clearTimeout(answerTimer)
-    answerTimer = null
-  }
-}
-
-const processAutoPlayStep = () => {
-  if (!isAutoPlaying.value || isFinished.value) {
-    stopAutoPlay()
-    return
-  }
-
-  // Показываем вопрос, ждем 2 секунды
-  lazyTimer = window.setTimeout(() => {
-    if (!isAutoPlaying.value || isFinished.value) return
-
-    // Показываем ответ и озвучиваем
-    showAnswerFn()
-
-    // Ждем завершения озвучки + еще 3 секунды
-    answerTimer = window.setTimeout(() => {
-      if (!isAutoPlaying.value || isFinished.value) return
-      nextCard()
-
-      // Переход к следующей карточке
-      processAutoPlayStep()
-    }, 3500)
-  }, 2000)
-}
-
-// Останавливаем автовоспроизведение при ручном взаимодействии
-watch(showAnswer, () => {
-  if (showAnswer.value && isAutoPlaying.value) {
-    // Пользователь нажал "Показать ответ" вручную - останавливаем таймер,
-    // но оставляем isAutoPlaying активным, чтобы он мог продолжить
-    if (lazyTimer) {
-      clearTimeout(lazyTimer)
-      lazyTimer = null
-    }
-  }
-})
-
-watch(currentIndex, () => {
-  if (isAutoPlaying.value && !isFinished.value) {
-    // Перешли к следующей карточке - продолжаем автовоспроизведение
-    if (answerTimer) {
-      clearTimeout(answerTimer)
-      answerTimer = null
-    }
-    processAutoPlayStep()
-  }
 })
 </script>
 
@@ -543,7 +518,7 @@ watch(currentIndex, () => {
   width: 100%;
 }
 
-.action-buttons>* {
+.action-buttons > * {
   flex: 1;
   min-width: 120px;
 }

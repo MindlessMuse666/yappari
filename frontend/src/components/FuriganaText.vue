@@ -1,23 +1,44 @@
+<!--
+  Компонент отображения японского текста с фуриганой.
+
+  Если furigana_text отсутствует, равен null или совпадает с kanji_text —
+  показывается только kanji_text. Иначе: kanji_text【furigana_text】.
+-->
+
 <template>
   <span class="furigana-text" :data-language="Language">
-    <span class="main-text">{{ displayText }}</span>
+    <span class="main-text">{{ KanjiText }}</span>
     <span v-if="FuriganaText && FuriganaText !== KanjiText" class="furigana">【{{ FuriganaText }}】</span>
   </span>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+/**
+ * Компонент для отображения японского текста с фуриганой.
+ *
+ * @example
+ * ```vue
+ * <FuriganaText KanjiText="食べる" FuriganaText="たべる" Language="ja" />
+ * <!-- Результат: 食べる【たべる】 -->
+ *
+ * <FuriganaText KanjiText="こんにちは" />
+ * <!-- Результат: こんにちは (без фуриганы, т.к. нет кандзи) -->
+ * ```
+ *
+ * @module components/FuriganaText
+ */
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
+  /** Японское слово (кандзи + кана) */
   KanjiText: string
+  /** Чтение каной (фуригана) */
   FuriganaText?: string | null
+  /** Язык для стилизации при наведении: `ja` (акцент) или `ru` (синий) */
   Language?: 'ja' | 'ru'
 }>(), {
   FuriganaText: null,
   Language: 'ja',
 })
-
-const displayText = computed(() => props.KanjiText)
 </script>
 
 <style scoped>

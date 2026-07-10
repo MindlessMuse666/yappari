@@ -1,3 +1,17 @@
+/**
+ * Глобальные стили Yappari (тёмная тема).
+ *
+ * Определяет:
+ * - Подключение шрифтов Inter и Noto Sans JP
+ * - Базовые стили элементов (body, button, input, ссылки)
+ * - Переопределения PrimeVue-компонентов под тёмную тему
+ * - Цветовую схему: фон #000000, текст #ffffff, акцент #ff0a14
+ *
+ * @module style
+ */
+
+/* ===== Шрифты ===== */
+
 @font-face {
   font-family: 'Inter';
   src: url('/fonts/inter/Inter-Regular.otf') format('opentype');
@@ -47,6 +61,8 @@
   font-style: normal;
 }
 
+/* ===== Сброс и базовые стили ===== */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -60,7 +76,6 @@ body {
   min-height: 100vh;
 }
 
-/* Отключаем выделение для интерфейсных элементов */
 button,
 h1, h2, h3, h4, h5, h6,
 label,
@@ -71,7 +86,6 @@ img {
   -ms-user-select: none;
 }
 
-/* Разрешаем выделение для вводимого текста */
 input,
 textarea {
   user-select: text;
@@ -139,6 +153,8 @@ ruby rt {
   color: #c7cdd8;
 }
 
+/* ===== PrimeVue-переопределения ===== */
+
 .p-button {
   background-color: #ff0a14 !important;
   border: none !important;
@@ -199,4 +215,3 @@ ruby rt {
 .p-progressbar-value {
   background-color: #ff0a14 !important;
 }
-
