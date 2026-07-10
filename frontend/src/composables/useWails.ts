@@ -3,19 +3,45 @@
  *
  * Единая точка доступа к методам бэкенда. Все методы типизированы
  * и возвращают Promise. В режиме разработки (без Wails) используются
- * мок-данные из {@link module:mocks/data}.
+ * мок-данные.
+ *
+ * Мок-импорты обёрнуты в `import.meta.env.DEV` — при production-сборке
+ * Vite tree-shaken весь блок, и файл `../mocks/data` не попадает в бандл.
  *
  * @module composables/useWails
  */
 
 import type { Deck, Card, CardInput, TrainingCard } from '../types'
-import { mockDecks, mockCards } from '../mocks/data'
 
 /**
  * Флаг: запущены ли мы в среде Wails.
  * Определяется по наличию глобального объекта `window.go.main.App`.
  */
 const isWails = typeof window !== 'undefined' && window.go?.main?.App != null
+
+/**
+ * Загружает мок-данные колод для разработки.
+ * В production-сборке этот блок tree-shaken.
+ */
+async function getMockDecks(): Promise<Deck[]> {
+  if (import.meta.env.DEV) {
+    const { mockDecks } = await import('../mocks/data')
+    return mockDecks
+  }
+  return []
+}
+
+/**
+ * Загружает мок-данные карточек для разработки.
+ * В production-сборке этот блок tree-shaken.
+ */
+async function getMockCards(): Promise<Card[]> {
+  if (import.meta.env.DEV) {
+    const { mockCards } = await import('../mocks/data')
+    return mockCards
+  }
+  return []
+}
 
 /**
  * Возвращает объект с методами для работы с бэкендом.
@@ -30,7 +56,7 @@ export function useWails() {
   const getDecks = async (): Promise<Deck[]> => {
     if (isWails) return window.go!.main.App.GetDecks()
     console.warn('Wails not available, using mock data')
-    return mockDecks
+    return getMockDecks()
   }
 
   /**
@@ -39,10 +65,11 @@ export function useWails() {
    */
   const createDeck = async (name: string): Promise<Deck> => {
     if (isWails) return window.go!.main.App.CreateDeck(name)
+    const decks = await getMockDecks()
     const newDeck: Deck = {
       ID: Date.now(), Name: name, CreatedAt: new Date().toISOString(),
     }
-    mockDecks.unshift(newDeck)
+    decks.unshift(newDeck)
     return newDeck
   }
 
@@ -53,7 +80,8 @@ export function useWails() {
    */
   const updateDeck = async (id: number, name: string): Promise<void> => {
     if (isWails) return window.go!.main.App.UpdateDeck(id, name)
-    const deck = mockDecks.find(d => d.ID === id)
+    const decks = await getMockDecks()
+    const deck = decks.find(d => d.ID === id)
     if (deck) deck.Name = name
   }
 
@@ -63,8 +91,9 @@ export function useWails() {
    */
   const deleteDeck = async (id: number): Promise<void> => {
     if (isWails) return window.go!.main.App.DeleteDeck(id)
-    const index = mockDecks.findIndex(d => d.ID === id)
-    if (index > -1) mockDecks.splice(index, 1)
+    const decks = await getMockDecks()
+    const index = decks.findIndex(d => d.ID === id)
+    if (index > -1) decks.splice(index, 1)
   }
 
   /**
@@ -73,7 +102,8 @@ export function useWails() {
    */
   const getCardsByDeck = async (deckId: number): Promise<Card[]> => {
     if (isWails) return window.go!.main.App.GetCardsByDeck(deckId)
-    return mockCards.filter(c => c.DeckID === deckId)
+    const cards = await getMockCards()
+    return cards.filter(c => c.DeckID === deckId)
   }
 
   /**
@@ -82,6 +112,7 @@ export function useWails() {
    */
   const createCard = async (input: CardInput): Promise<Card> => {
     if (isWails) return window.go!.main.App.CreateCard(input)
+    const cards = await getMockCards()
     const newCard: Card = {
       ID: Date.now(), DeckID: input.DeckID,
       KanjiText: input.KanjiText, FuriganaText: input.FuriganaText,
@@ -90,7 +121,7 @@ export function useWails() {
       NextReview: new Date().toISOString(),
       CreatedAt: new Date().toISOString(), UpdatedAt: new Date().toISOString(),
     }
-    mockCards.push(newCard)
+    cards.push(newCard)
     return newCard
   }
 
@@ -101,7 +132,8 @@ export function useWails() {
    */
   const updateCard = async (id: number, input: CardInput): Promise<void> => {
     if (isWails) return window.go!.main.App.UpdateCard(id, input)
-    const card = mockCards.find(c => c.ID === id)
+    const cards = await getMockCards()
+    const card = cards.find(c => c.ID === id)
     if (card) {
       card.KanjiText = input.KanjiText
       card.FuriganaText = input.FuriganaText
@@ -115,8 +147,9 @@ export function useWails() {
    */
   const deleteCard = async (id: number): Promise<void> => {
     if (isWails) return window.go!.main.App.DeleteCard(id)
-    const index = mockCards.findIndex(c => c.ID === id)
-    if (index > -1) mockCards.splice(index, 1)
+    const cards = await getMockCards()
+    const index = cards.findIndex(c => c.ID === id)
+    if (index > -1) cards.splice(index, 1)
   }
 
   /**
@@ -131,7 +164,8 @@ export function useWails() {
    */
   const getTrainingCards = async (mode: string, deckIDs: number[]): Promise<TrainingCard[]> => {
     if (isWails) return window.go!.main.App.GetTrainingCards(mode, deckIDs)
-    return mockCards.filter(c => deckIDs.includes(c.DeckID)).map(c => ({
+    const cards = await getMockCards()
+    return cards.filter(c => deckIDs.includes(c.DeckID)).map(c => ({
       ID: c.ID, KanjiText: c.KanjiText,
       FuriganaText: c.FuriganaText, Translation: c.Translation,
     }))
@@ -148,7 +182,8 @@ export function useWails() {
    */
   const submitReview = async (cardID: number, grade: number): Promise<Card> => {
     if (isWails) return window.go!.main.App.SubmitReview(cardID, grade)
-    const card = mockCards.find(c => c.ID === cardID)
+    const cards = await getMockCards()
+    const card = cards.find(c => c.ID === cardID)
     if (card) return card
     throw new Error('Card not found')
   }

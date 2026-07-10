@@ -22,9 +22,18 @@ frontend/dist/
 docs/commit-style-guide.md
 *.md
 
-# прочее
+# среда разработки
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# прочее
 *.out
 vendor/
 *.log
+*.tmp
+
+# временные файлы TTS
+/tmp/yappari-tts*
