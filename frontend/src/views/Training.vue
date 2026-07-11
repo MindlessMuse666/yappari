@@ -78,7 +78,7 @@
           </template>
           <template v-else>
             <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
-              {{ isAutoPlaying ? 'Остановить' : 'Авто' }} <kbd class="hotkey-hint">Ctrl W</kbd>
+              {{ isAutoPlaying ? 'Остановить' : 'Авто' }} <kbd class="hotkey-hint">W</kbd>
             </button>
             <template v-if="!isAutoPlaying">
               <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
@@ -235,7 +235,7 @@ const goBack = () => {
  * - Escape → на главную
  * - Space → показать ответ / далее
  * - 1-4 → оценки SM-2 (интервальный режим)
- * - Ctrl/Cmd+A → авто (свободный режим)
+ * - W → авто (свободный режим)
  */
 const onKeydown = (e: KeyboardEvent) => {
   // Escape — всегда на главную
@@ -263,12 +263,13 @@ const onKeydown = (e: KeyboardEvent) => {
     return
   }
 
-  // Ctrl/Cmd+W — авто (свободный режим)
-  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyW') {
+  // W — авто (свободный режим)
+  const target = e.target as HTMLElement
+  const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+
+  if (e.code === 'KeyW' && mode.value === 'free' && !isFinished.value && !isInputField) {
     e.preventDefault()
-    if (mode.value === 'free' && !isFinished.value) {
-      toggleAutoPlay()
-    }
+    toggleAutoPlay()
     return
   }
 

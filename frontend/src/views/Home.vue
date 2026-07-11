@@ -11,12 +11,44 @@
     <div class="header">
       <img src="/yappari_logo.png" alt="Yappari Logo" class="logo" draggable="false" />
       <h1>Yappari</h1>
+
+      <div class="profile-section">
+        <div class="profile-trigger" @mouseenter="showProfilePopover" @mouseleave="hideProfilePopover">
+          <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+        <Transition name="popover">
+          <div v-if="showProfile" class="profile-popover" @mouseenter="cancelProfileTimer" @mouseleave="hideProfilePopover">
+            <div class="popover-header">
+              <svg class="popover-avatar" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <div class="popover-user-info">
+                <span class="popover-greeting">Привет!</span>
+                <span class="popover-email">{{ user?.email }}</span>
+              </div>
+            </div>
+            <div class="popover-divider"></div>
+            <button @click="handleLogout" class="popover-logout-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Выйти
+            </button>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <div class="actions">
       <button v-if="decks.length > 0" @click="createDeckModalVisible = true" class="primary-btn">
         <span class="icon">+</span>
-        Новая колода <kbd class="hotkey-hint">Ctrl N</kbd>
+        Новая колода <kbd class="hotkey-hint">N</kbd>
       </button>
       <button v-if="decks.length > 0" @click="toggleSelectAll" class="primary-btn select-all-btn">
         {{ allSelected ? 'Сбросить все' : 'Выбрать все' }}
@@ -123,11 +155,13 @@ import Button from 'primevue/button'
 import type { Deck } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
+import { useAuth } from '../composables/useAuth'
 import { playClickSound } from '../composables/useSound'
 
 const router = useRouter()
 const { getDecks, createDeck: createDeckWails } = useWails()
 const { alert } = useAlert()
+const { user, logout } = useAuth()
 
 const decks = ref<Deck[]>([])
 const selectedDeckIds = ref<number[]>([])
@@ -238,12 +272,40 @@ const toggleSelectAll = () => {
   }
 }
 
-/** Ctrl+N — открыть модалку создания колоды */
+/** N — открыть модалку создания колоды */
 const onKeydown = (e: KeyboardEvent) => {
-  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyN') {
+  // Игнорируем хоткеи при вводе в текстовые поля
+  const target = e.target as HTMLElement
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+
+  if (e.code === 'KeyN' && !createDeckModalVisible.value) {
     e.preventDefault()
     createDeckModalVisible.value = true
   }
+}
+
+/** Состояние профиль-поповера */
+const showProfile = ref(false)
+let profileTimer: ReturnType<typeof setTimeout> | null = null
+
+const showProfilePopover = () => {
+  if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
+  showProfile.value = true
+}
+
+const hideProfilePopover = () => {
+  if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
+  profileTimer = setTimeout(() => { showProfile.value = false }, 250)
+}
+
+const cancelProfileTimer = () => {
+  if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
+}
+
+const handleLogout = () => {
+  playClickSound()
+  logout()
+  router.push('/login')
 }
 
 /** Сброс таймера поповера */
@@ -485,11 +547,126 @@ watch(selectedDeckIds, (newVal) => {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .select-all-btn {
   margin-left: auto;
   min-width: 170px;
+}
+
+/* ===== Профиль ===== */
+.profile-section {
+  position: relative;
+  margin-left: auto;
+}
+
+.profile-trigger {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #111111;
+  border: 1px solid #333333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: #c7cdd8;
+}
+
+.profile-trigger:hover {
+  border-color: #ff0a14;
+  color: #ffffff;
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255, 10, 20, 0.25);
+}
+
+.profile-icon {
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.profile-trigger:hover .profile-icon {
+  transform: scale(1.05);
+}
+
+.profile-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 240px;
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  user-select: none;
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.popover-avatar {
+  flex-shrink: 0;
+  color: #ff0a14;
+  background: rgba(255, 10, 20, 0.08);
+  border-radius: 50%;
+  padding: 4px;
+}
+
+.popover-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.popover-greeting {
+  font-size: 0.8rem;
+  color: #888888;
+  font-weight: 400;
+}
+
+.popover-email {
+  font-size: 0.9rem;
+  color: #ffffff;
+  font-weight: 500;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.popover-divider {
+  height: 1px;
+  background: #333333;
+  margin: 0.85rem 0;
+}
+
+.popover-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: 1px solid #333333;
+  color: #c7cdd8;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.popover-logout-btn:hover {
+  background: #ff0a14;
+  border-color: #ff0a14;
+  color: white;
 }
 
 .primary-btn {

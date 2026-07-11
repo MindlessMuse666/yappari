@@ -27,7 +27,7 @@
     <div class="add-card">
       <button @click="openNewCardForm" class="primary-btn">
         <span class="icon">+</span>
-        Добавить карточку <kbd class="hotkey-hint">Ctrl Q</kbd>
+        Добавить карточку <kbd class="hotkey-hint">Q</kbd>
       </button>
     </div>
 
@@ -168,12 +168,14 @@ const onDialogHide = () => {
 
 /** Escape → на главную (если не открыта модалка карточки) */
 const onKeydown = (e: KeyboardEvent) => {
-  // Ctrl/Cmd+Q → новая карточка
-  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyQ') {
+  // Игнорируем хоткеи при вводе в текстовые поля
+  const target = e.target as HTMLElement
+  const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+
+  // Q → новая карточка
+  if (e.code === 'KeyQ' && !cardFormModalVisible.value && !isInputField) {
     e.preventDefault()
-    if (!cardFormModalVisible.value) {
-      openNewCardForm()
-    }
+    openNewCardForm()
     return
   }
 
