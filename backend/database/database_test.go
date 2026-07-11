@@ -4,30 +4,39 @@ import (
 	"testing"
 )
 
-// setupTestDB инициализирует БД в памяти для тестов.
+// testUserID — ID тестового пользователя, создаваемого в setupTestDB.
+var testUserID int
+
+// setupTestDB инициализирует БД в памяти для тестов и создаёт тестового пользователя.
 func setupTestDB(t *testing.T) {
 	t.Helper()
-	SetDBPath(":memory:")
-	if err := InitDB(); err != nil {
+	if err := InitDB(":memory:"); err != nil {
 		t.Fatalf("не удалось инициализировать БД: %v", err)
 	}
+
+	// Создаём тестового пользователя (bcrypt дорогой, используем заранее готовый хеш)
+	user, err := CreateUser("test@example.com", "$2a$10$dummy_hash_for_testing_purposes_only")
+	if err != nil {
+		t.Fatalf("не удалось создать тестового пользователя: %v", err)
+	}
+	testUserID = user.ID
 }
 
 // cleanupTestDB закрывает БД после теста.
 func cleanupTestDB(t *testing.T) {
 	t.Helper()
+	testUserID = 0
 	if err := CloseDB(); err != nil {
 		t.Errorf("не удалось закрыть БД: %v", err)
 	}
 }
 
 func TestInitDB_InMemory(t *testing.T) {
-	// Инициализация с :memory: должна выполнить миграции без ошибок
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
 	// Проверяем, что таблицы созданы — пытаемся вставить данные
-	deck, err := CreateDeck("тестовая колода")
+	deck, err := CreateDeck("тестовая колода", testUserID)
 	if err != nil {
 		t.Fatalf("не удалось создать колоду после миграции: %v", err)
 	}
@@ -46,7 +55,7 @@ func TestCreateAndGetDecks(t *testing.T) {
 	defer cleanupTestDB(t)
 
 	// Создаём колоду
-	deck, err := CreateDeck("моя колода")
+	deck, err := CreateDeck("моя колода", testUserID)
 	if err != nil {
 		t.Fatalf("не удалось создать колоду: %v", err)
 	}
@@ -58,7 +67,7 @@ func TestCreateAndGetDecks(t *testing.T) {
 	}
 
 	// Получаем список колод
-	decks, err := GetDecks()
+	decks, err := GetDecks(testUserID)
 	if err != nil {
 		t.Fatalf("не удалось получить колоды: %v", err)
 	}
@@ -74,17 +83,17 @@ func TestUpdateDeck(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, err := CreateDeck("старое имя")
+	deck, err := CreateDeck("старое имя", testUserID)
 	if err != nil {
 		t.Fatalf("не удалось создать колоду: %v", err)
 	}
 
-	err = UpdateDeck(deck.ID, "новое имя")
+	err = UpdateDeck(deck.ID, testUserID, "новое имя")
 	if err != nil {
 		t.Fatalf("не удалось обновить колоду: %v", err)
 	}
 
-	decks, _ := GetDecks()
+	decks, _ := GetDecks(testUserID)
 	if decks[0].Name != "новое имя" {
 		t.Errorf("ожидалось имя 'новое имя', получено '%s'", decks[0].Name)
 	}
@@ -94,17 +103,17 @@ func TestDeleteDeck(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, err := CreateDeck("для удаления")
+	deck, err := CreateDeck("для удаления", testUserID)
 	if err != nil {
 		t.Fatalf("не удалось создать колоду: %v", err)
 	}
 
-	err = DeleteDeck(deck.ID)
+	err = DeleteDeck(deck.ID, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось удалить колоду: %v", err)
 	}
 
-	decks, _ := GetDecks()
+	decks, _ := GetDecks(testUserID)
 	if len(decks) != 0 {
 		t.Errorf("ожидалось 0 колод после удаления, получено %d", len(decks))
 	}
@@ -114,7 +123,7 @@ func TestDeleteDeck_NotFound(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	err := DeleteDeck(999)
+	err := DeleteDeck(999, testUserID)
 	if err == nil {
 		t.Error("ожидалась ошибка при удалении несуществующей колоды")
 	}
@@ -127,7 +136,7 @@ func TestCreateAndGetCards(t *testing.T) {
 	defer cleanupTestDB(t)
 
 	// Создаём колоду
-	deck, err := CreateDeck("тестовая")
+	deck, err := CreateDeck("тестовая", testUserID)
 	if err != nil {
 		t.Fatalf("не удалось создать колоду: %v", err)
 	}
@@ -160,7 +169,7 @@ func TestCreateAndGetCards(t *testing.T) {
 	}
 
 	// Получаем карточки колоды
-	cards, err := GetCardsByDeck(deck.ID)
+	cards, err := GetCardsByDeck(deck.ID, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось получить карточки: %v", err)
 	}
@@ -173,7 +182,7 @@ func TestUpdateCard(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	card, _ := CreateCard(CardInput{
 		DeckID:      deck.ID,
 		KanjiText:   "古い",
@@ -207,7 +216,7 @@ func TestDeleteCard(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	card, _ := CreateCard(CardInput{
 		DeckID:      deck.ID,
 		KanjiText:   "test",
@@ -219,7 +228,7 @@ func TestDeleteCard(t *testing.T) {
 		t.Fatalf("не удалось удалить карточку: %v", err)
 	}
 
-	cards, _ := GetCardsByDeck(deck.ID)
+	cards, _ := GetCardsByDeck(deck.ID, testUserID)
 	if len(cards) != 0 {
 		t.Errorf("ожидалось 0 карточек после удаления, получено %d", len(cards))
 	}
@@ -241,11 +250,11 @@ func TestGetTrainingCards_FreeMode(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	_, _ = CreateCard(CardInput{DeckID: deck.ID, KanjiText: "猫", Translation: "кот"})
 	_, _ = CreateCard(CardInput{DeckID: deck.ID, KanjiText: "犬", Translation: "собака"})
 
-	cards, err := GetTrainingCards("free", []int{deck.ID})
+	cards, err := GetTrainingCards("free", []int{deck.ID}, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось получить карточки тренировки: %v", err)
 	}
@@ -258,7 +267,7 @@ func TestGetTrainingCards_IntervalMode(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 
 	// Первая карточка — новая, next_review = сейчас (доступна)
 	card1, _ := CreateCard(CardInput{DeckID: deck.ID, KanjiText: "猫", Translation: "кот"})
@@ -267,9 +276,9 @@ func TestGetTrainingCards_IntervalMode(t *testing.T) {
 	_, _ = CreateCard(CardInput{DeckID: deck.ID, KanjiText: "犬", Translation: "собака"})
 
 	// Сбрасываем прогресс первой — next_review = сейчас
-	_ = ResetCardProgress(card1.ID)
+	_ = ResetCardProgress(card1.ID, testUserID)
 
-	cards, err := GetTrainingCards("interval", []int{deck.ID})
+	cards, err := GetTrainingCards("interval", []int{deck.ID}, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось получить карточки для интервального режима: %v", err)
 	}
@@ -284,7 +293,7 @@ func TestGetTrainingCards_EmptyDeckIDs(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	cards, err := GetTrainingCards("free", []int{})
+	cards, err := GetTrainingCards("free", []int{}, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось получить карточки с пустым списком колод: %v", err)
 	}
@@ -299,11 +308,11 @@ func TestSubmitReview_Success(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	card, _ := CreateCard(CardInput{DeckID: deck.ID, KanjiText: "勉強", Translation: "учёба"})
 
 	// Отвечаем "хорошо" (grade 4)
-	updated, err := SubmitReview(card.ID, 4)
+	updated, err := SubmitReview(card.ID, 4, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось выполнить обзор: %v", err)
 	}
@@ -326,11 +335,11 @@ func TestSubmitReview_Fail(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	card, _ := CreateCard(CardInput{DeckID: deck.ID, KanjiText: "難しい", Translation: "сложный"})
 
 	// Отвечаем "перезаучивание" (grade 0)
-	updated, err := SubmitReview(card.ID, 0)
+	updated, err := SubmitReview(card.ID, 0, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось выполнить обзор: %v", err)
 	}
@@ -347,7 +356,7 @@ func TestSubmitReview_InvalidGrade(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	_, err := SubmitReview(1, 2)
+	_, err := SubmitReview(1, 2, testUserID)
 	if err == nil {
 		t.Error("ожидалась ошибка при недопустимой оценке")
 	}
@@ -359,14 +368,14 @@ func TestResetCardProgress(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	card, _ := CreateCard(CardInput{DeckID: deck.ID, KanjiText: "テスト", Translation: "тест"})
 
 	// Сначала делаем обзор, чтобы изменить SM-2 поля
-	_, _ = SubmitReview(card.ID, 4)
+	_, _ = SubmitReview(card.ID, 4, testUserID)
 
 	// Сбрасываем прогресс
-	err := ResetCardProgress(card.ID)
+	err := ResetCardProgress(card.ID, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось сбросить прогресс карточки: %v", err)
 	}
@@ -387,19 +396,19 @@ func TestResetDeckProgress(t *testing.T) {
 	setupTestDB(t)
 	defer cleanupTestDB(t)
 
-	deck, _ := CreateDeck("тестовая")
+	deck, _ := CreateDeck("тестовая", testUserID)
 	card1, _ := CreateCard(CardInput{DeckID: deck.ID, KanjiText: "A", Translation: "а"})
 	card2, _ := CreateCard(CardInput{DeckID: deck.ID, KanjiText: "B", Translation: "б"})
 
-	_, _ = SubmitReview(card1.ID, 4)
-	_, _ = SubmitReview(card2.ID, 5)
+	_, _ = SubmitReview(card1.ID, 4, testUserID)
+	_, _ = SubmitReview(card2.ID, 5, testUserID)
 
-	err := ResetDeckProgress(deck.ID)
+	err := ResetDeckProgress(deck.ID, testUserID)
 	if err != nil {
 		t.Fatalf("не удалось сбросить прогресс колоды: %v", err)
 	}
 
-	cards, _ := GetCardsByDeck(deck.ID)
+	cards, _ := GetCardsByDeck(deck.ID, testUserID)
 	for _, c := range cards {
 		if c.Repetitions != 0 {
 			t.Errorf("ожидались repetitions=0 для карточки %d, получены %d", c.ID, c.Repetitions)

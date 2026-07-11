@@ -1,18 +1,18 @@
-.PHONY: dev build build-prod test test-sm2 test-db fe-dev fe-dev fe-build fe-check fe-install fe-clean lint clean install install-tts
+.PHONY: dev build test test-sm2 test-db fe-dev fe-check fe-build fe-install fe-clean lint clean
 
-# === Wails (десктоп-приложение) ===
+# === Веб-сервер (Go + Gin) ===
 
-## Запустить приложение в режиме разработки (Wails + hot-reload)
+## Запустить сервер в режиме разработки (с hot-reload через air)
 dev:
-	wails dev
+	cd frontend && npm run dev
 
-## Собрать EXE для Windows (production)
+## Запустить Go-сервер (требуется DATABASE_PATH или создаст ./yappari.db)
+server:
+	go run ./backend/cmd/server
+
+## Собрать бинарник сервера для Linux amd64 (Render/Docker)
 build:
-	wails build -clean -platform windows/amd64 -webview2 embed
-
-## Собрать EXE без WebView2-бутстраппера (экономит ~2MB, но требует WebView2 в системе)
-build-lean:
-	wails build -clean -platform windows/amd64 -webview2 download
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o yappari-server ./backend/cmd/server
 
 # === Тестирование ===
 
@@ -32,9 +32,9 @@ test-db:
 lint:
 	golangci-lint run
 
-# === Frontend (без Wails, мок-данные) ===
+# === Frontend (Vue 3 + Vite) ===
 
-## Запустить фронтенд в режиме разработки (без Wails, мок-данные)
+## Запустить фронтенд в режиме разработки (Vite dev server)
 fe-dev:
 	cd frontend && npm run dev
 
@@ -61,43 +61,15 @@ install: fe-install
 	go mod download
 	@echo "✅ Зависимости установлены"
 
-## Установить TTS-окружение (Python venv + Silero + Kokoro)
-install-tts:
-	python backend/tts/python/setup_tts.py
-	@echo "✅ TTS-окружение установлено"
-
-## Установка всего: Go + фронтенд + TTS (первый запуск)
-setup: install install-tts
-	@echo "✅✅✅ Проект готов к запуску! Используйте: make dev"
-
 # === Очистка ===
 
-## Очистить артефакты сборки (бинарники, dist, node_modules)
+## Очистить артефакты сборки
 clean:
-	@if exist build rmdir /s /q build
 	@cd frontend && if exist dist rmdir /s /q dist
+	@if exist yappari-server del yappari-server
 	@echo "✅ Артефакты сборки удалены"
 
 ## Полная очистка (включая зависимости)
 clean-all: clean
 	@cd frontend && if exist node_modules rmdir /s /q node_modules
 	@echo "✅ Всё очищено"
-
-# === Сборка для публикации ===
-
-## Собрать production EXE и показать информацию о сборке
-build-prod: test build
-	@echo "✅ Production-сборка готова!"
-	@echo "📦 Файл: build/bin/yappari.exe"
-	@echo "📏 Размер:"
-	@if exist build\bin\yappari.exe echo    $$(for %I in (build\bin\yappari.exe) do @echo %~zI bytes)
-	@echo "🚀 Распространяйте build/bin/yappari.exe как portable-версию"
-
-## Собрать production EXE с NSIS-инсталлятором (требуется NSIS в PATH)
-build-installer: build-prod
-	@echo "🔧 Сборка инсталлятора через NSIS..."
-	@echo "   Установите NSIS: https://nsis.sourceforge.io/Download"
-	@echo "   Затем: makensis installer.nsi"
-	@echo ""
-	@echo "   📌 Рекомендация: для первого релиза используйте portable EXE"
-	@echo "      Инсталлятор имеет смысл, когда появятся частые обновления"

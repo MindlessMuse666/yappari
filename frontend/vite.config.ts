@@ -8,16 +8,22 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Прокси для API-запросов к Go-бэкенду в dev-режиме
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
     watch: {
-      ignored: ['**/node_modules/**', '**/dist/**']
-    }
+      ignored: ['**/node_modules/**', '**/dist/**'],
+    },
   },
-  envPrefix: ['VITE_', 'TAURI_', 'WAILS_'],
+  envPrefix: ['VITE_'],
   build: {
     target: 'esnext',
     minify: 'esbuild',
     outDir: 'dist',
-    emptyOutDir: true
-  }
+    emptyOutDir: true,
+  },
 })
-

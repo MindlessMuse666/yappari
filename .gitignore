@@ -2,14 +2,13 @@
 go.work
 *.exe
 *.test
+yappari-server
 
 # python
 __pycache__/
 
-# wails
+# build
 build/
-wailsjs/
-*.syso
 
 # frontend
 frontend/node_modules/

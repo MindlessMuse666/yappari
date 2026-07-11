@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: yappari
+    env: docker
+    repo: https://github.com/MindlessMuse666/yappari
+    branch: web
+    plan: free
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_PATH
+        value: /app/data/yappari.db
+      - key: PORT
+        value: 8080
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1

@@ -4,10 +4,13 @@ import (
 	"fmt"
 )
 
-// GetDecks возвращает список всех колод, отсортированных по дате создания
-// от новых к старым.
-func GetDecks() ([]Deck, error) {
-	rows, err := DB.Query("SELECT id, name, created_at FROM decks ORDER BY created_at DESC")
+// GetDecks возвращает список колод указанного пользователя,
+// отсортированных от новых к старым.
+func GetDecks(userID int) ([]Deck, error) {
+	rows, err := DB.Query(
+		"SELECT id, name, created_at FROM decks WHERE user_id = ? ORDER BY created_at DESC",
+		userID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось получить список колод: %w", err)
 	}
@@ -29,10 +32,22 @@ func GetDecks() ([]Deck, error) {
 	return decks, nil
 }
 
-// CreateDeck создаёт новую колоду с указанным именем.
-// Возвращает созданную колоду с заполненными полями.
-func CreateDeck(name string) (*Deck, error) {
-	result, err := DB.Exec("INSERT INTO decks (name) VALUES (?)", name)
+// GetDeckByID возвращает колоду по идентификатору с проверкой владельца.
+func GetDeckByID(deckID, userID int) (*Deck, error) {
+	var d Deck
+	err := DB.QueryRow(
+		"SELECT id, name, created_at FROM decks WHERE id = ? AND user_id = ?",
+		deckID, userID,
+	).Scan(&d.ID, &d.Name, &d.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("колода с идентификатором %d не найдена: %w", deckID, err)
+	}
+	return &d, nil
+}
+
+// CreateDeck создаёт новую колоду для указанного пользователя.
+func CreateDeck(name string, userID int) (*Deck, error) {
+	result, err := DB.Exec("INSERT INTO decks (name, user_id) VALUES (?, ?)", name, userID)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось создать колоду: %w", err)
 	}
@@ -47,7 +62,6 @@ func CreateDeck(name string) (*Deck, error) {
 		Name: name,
 	}
 
-	// Читаем created_at из БД, чтобы получить значение datetime('now')
 	err = DB.QueryRow("SELECT created_at FROM decks WHERE id = ?", id).Scan(&d.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось прочитать дату создания колоды: %w", err)
@@ -56,9 +70,9 @@ func CreateDeck(name string) (*Deck, error) {
 	return d, nil
 }
 
-// UpdateDeck обновляет название колоды.
-func UpdateDeck(id int, name string) error {
-	result, err := DB.Exec("UPDATE decks SET name = ? WHERE id = ?", name, id)
+// UpdateDeck обновляет название колоды с проверкой владельца.
+func UpdateDeck(id, userID int, name string) error {
+	result, err := DB.Exec("UPDATE decks SET name = ? WHERE id = ? AND user_id = ?", name, id, userID)
 	if err != nil {
 		return fmt.Errorf("не удалось обновить колоду: %w", err)
 	}
@@ -74,9 +88,9 @@ func UpdateDeck(id int, name string) error {
 	return nil
 }
 
-// DeleteDeck удаляет колоду и все её карточки (каскадное удаление).
-func DeleteDeck(id int) error {
-	result, err := DB.Exec("DELETE FROM decks WHERE id = ?", id)
+// DeleteDeck удаляет колоду с проверкой владельца.
+func DeleteDeck(id, userID int) error {
+	result, err := DB.Exec("DELETE FROM decks WHERE id = ? AND user_id = ?", id, userID)
 	if err != nil {
 		return fmt.Errorf("не удалось удалить колоду: %w", err)
 	}

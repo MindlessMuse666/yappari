@@ -9,14 +9,16 @@ import (
 	"github.com/MindlessMuse666/yappari/backend/sm2"
 )
 
-// GetTrainingCards возвращает карточки для тренировки из указанных колод.
+// GetTrainingCards возвращает карточки для тренировки из указанных колод
+// с проверкой владения пользователем.
 //
 // Параметры:
 //   - mode — режим тренировки: "interval" (только просроченные) или "free" (все)
 //   - deckIDs — список идентификаторов колод
+//   - userID — идентификатор пользователя
 //
 // Карточки возвращаются в случайном порядке.
-func GetTrainingCards(mode string, deckIDs []int) ([]TrainingCard, error) {
+func GetTrainingCards(mode string, deckIDs []int, userID int) ([]TrainingCard, error) {
 	if len(deckIDs) == 0 {
 		return []TrainingCard{}, nil
 	}
@@ -28,21 +30,25 @@ func GetTrainingCards(mode string, deckIDs []int) ([]TrainingCard, error) {
 
 	deckPlaceholders := `?` + strings.Repeat(",?", len(deckIDs)-1)
 
-	// Базовый запрос: все карточки из указанных колод
+	// Базовый запрос: все карточки из указанных колод с проверкой владения
 	baseQuery := `
-		SELECT id, kanji_text, furigana_text, translation
-		FROM cards
-		WHERE deck_id IN (` + deckPlaceholders + `)
+		SELECT c.id, c.kanji_text, c.furigana_text, c.translation
+		FROM cards c
+		JOIN decks d ON d.id = c.deck_id
+		WHERE c.deck_id IN (` + deckPlaceholders + `) AND d.user_id = ?
 	`
 
-	if mode == "interval" {
-		// Сначала пробуем получить только просроченные карточки
-		now := time.Now().UTC().Format(time.RFC3339)
-		overdueQuery := baseQuery + ` AND next_review <= ?`
+	placeholders = append(placeholders, userID)
 
-		overduePlaceholders := make([]any, 0, len(deckIDs)+1)
-		overduePlaceholders = append(overduePlaceholders, placeholders...)
-		overduePlaceholders = append(overduePlaceholders, now)
+	if mode == "interval" {
+		now := time.Now().UTC().Format(time.RFC3339)
+		overdueQuery := baseQuery + ` AND c.next_review <= ?`
+
+		overduePlaceholders := make([]any, 0, len(deckIDs)+2)
+		for _, id := range deckIDs {
+			overduePlaceholders = append(overduePlaceholders, id)
+		}
+		overduePlaceholders = append(overduePlaceholders, userID, now)
 
 		cards, err := queryCards(overdueQuery, overduePlaceholders...)
 		if err != nil {
@@ -51,8 +57,6 @@ func GetTrainingCards(mode string, deckIDs []int) ([]TrainingCard, error) {
 		if len(cards) > 0 {
 			return cards, nil
 		}
-
-		// Просроченных нет — берём все карточки (режим доступен всегда)
 	}
 
 	cards, err := queryCards(baseQuery, placeholders...)
@@ -92,16 +96,28 @@ func queryCards(query string, placeholders ...any) ([]TrainingCard, error) {
 }
 
 // SubmitReview применяет алгоритм SM-2 к карточке на основе оценки пользователя
-// и обновляет её поля в базе данных.
+// и обновляет её поля в базе данных. Проверяет владение карточкой через JOIN.
 //
 // Параметры:
 //   - cardID — идентификатор карточки
 //   - grade — оценка пользователя (0 — перезаучивание, 3 — трудно, 4 — хорошо, 5 — легко)
+//   - userID — идентификатор пользователя для проверки владения
 //
 // Возвращает обновлённую карточку.
-func SubmitReview(cardID int, grade int) (*Card, error) {
+func SubmitReview(cardID int, grade int, userID int) (*Card, error) {
 	if err := sm2.ValidateGrade(grade); err != nil {
 		return nil, fmt.Errorf("недопустимая оценка: %w", err)
+	}
+
+	// Проверяем владение карточкой через JOIN с колодой
+	var deckID int
+	err := DB.QueryRow(`
+		SELECT c.deck_id FROM cards c
+		JOIN decks d ON d.id = c.deck_id
+		WHERE c.id = ? AND d.user_id = ?
+	`, cardID, userID).Scan(&deckID)
+	if err != nil {
+		return nil, fmt.Errorf("карточка с идентификатором %d не найдена или недоступна: %w", cardID, err)
 	}
 
 	card, err := GetCardByID(cardID)
@@ -130,9 +146,9 @@ func SubmitReview(cardID int, grade int) (*Card, error) {
 	return updatedCard, nil
 }
 
-// ResetCardProgress сбрасывает прогресс SM-2 для указанной карточки в начальное
-// состояние (EF=2.5, interval=0, repetitions=0, next_review=текущее время).
-func ResetCardProgress(cardID int) error {
+// ResetCardProgress сбрасывает прогресс SM-2 для указанной карточки
+// с проверкой владения через JOIN.
+func ResetCardProgress(cardID int, userID int) error {
 	result := sm2.Reset()
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -140,8 +156,10 @@ func ResetCardProgress(cardID int) error {
 		UPDATE cards
 		SET ease_factor = ?, interval = ?, repetitions = ?,
 		    next_review = ?, last_review = NULL, updated_at = ?
-		WHERE id = ?
-	`, result.EaseFactor, result.Interval, result.Repetitions, result.NextReview, now, cardID)
+		WHERE id = ? AND deck_id IN (
+			SELECT id FROM decks WHERE user_id = ?
+		)
+	`, result.EaseFactor, result.Interval, result.Repetitions, result.NextReview, now, cardID, userID)
 	if err != nil {
 		return fmt.Errorf("не удалось сбросить прогресс карточки: %w", err)
 	}
@@ -157,8 +175,9 @@ func ResetCardProgress(cardID int) error {
 	return nil
 }
 
-// ResetDeckProgress сбрасывает прогресс SM-2 для всех карточек указанной колоды.
-func ResetDeckProgress(deckID int) error {
+// ResetDeckProgress сбрасывает прогресс SM-2 для всех карточек указанной колоды
+// с проверкой владения.
+func ResetDeckProgress(deckID int, userID int) error {
 	result := sm2.Reset()
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -166,8 +185,10 @@ func ResetDeckProgress(deckID int) error {
 		UPDATE cards
 		SET ease_factor = ?, interval = ?, repetitions = ?,
 		    next_review = ?, last_review = NULL, updated_at = ?
-		WHERE deck_id = ?
-	`, result.EaseFactor, result.Interval, result.Repetitions, result.NextReview, now, deckID)
+		WHERE deck_id = ? AND deck_id IN (
+			SELECT id FROM decks WHERE user_id = ?
+		)
+	`, result.EaseFactor, result.Interval, result.Repetitions, result.NextReview, now, deckID, userID)
 	if err != nil {
 		return fmt.Errorf("не удалось сбросить прогресс колоды: %w", err)
 	}

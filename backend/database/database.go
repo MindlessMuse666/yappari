@@ -11,7 +11,7 @@ import (
 
 // DB — глобальное подключение к SQLite. Инициализируется в InitDB.
 // Допустимо использовать глобальную переменную, так как приложение
-// однопользовательское с одним экземпляром БД.
+// работает как единый процесс (веб-сервер).
 var DB *sql.DB
 
 // dbPath — путь к файлу базы данных. По умолчанию определяется в InitDB,
@@ -24,21 +24,23 @@ func SetDBPath(path string) {
 	dbPath = path
 }
 
-// InitDB инициализирует подключение к SQLite. Если путь не был задан через
-// SetDBPath, создаёт файл database.db в папке %APPDATA%/Yappari.
+// InitDB инициализирует подключение к SQLite с WAL-режимом.
+// Если путь не был задан через SetDBPath, использует переданный path.
 // Выполняет миграции схемы при первом запуске.
-func InitDB() error {
+func InitDB(path string) error {
+	if path != "" {
+		dbPath = path
+	}
+
 	if dbPath == "" {
 		appData, err := os.UserConfigDir()
 		if err != nil {
 			return fmt.Errorf("не удалось получить путь к папке пользователя: %w", err)
 		}
-
 		appDir := filepath.Join(appData, "Yappari")
 		if err := os.MkdirAll(appDir, 0755); err != nil {
 			return fmt.Errorf("не удалось создать папку приложения: %w", err)
 		}
-
 		dbPath = filepath.Join(appDir, "database.db")
 	}
 
@@ -52,6 +54,11 @@ func InitDB() error {
 		return fmt.Errorf("не удалось подключиться к базе данных: %w", err)
 	}
 
+	// WAL-режим для производительности
+	if _, err := DB.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		return fmt.Errorf("не удалось установить WAL-режим: %w", err)
+	}
+
 	if err := runMigrations(); err != nil {
 		return fmt.Errorf("не удалось выполнить миграции: %w", err)
 	}
@@ -59,13 +66,22 @@ func InitDB() error {
 	return nil
 }
 
-// runMigrations создаёт таблицы decks и cards, если они ещё не существуют.
+// runMigrations создаёт таблицы users, decks и cards, если они ещё не существуют.
+// Применяет обновления схемы для существующих БД.
 func runMigrations() error {
 	migrations := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);`,
 		`CREATE TABLE IF NOT EXISTS decks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
 			name TEXT NOT NULL,
-			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		);`,
 		`CREATE TABLE IF NOT EXISTS cards (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,7 +106,21 @@ func runMigrations() error {
 		}
 	}
 
+	// Миграция: добавляем user_id в существующую таблицу decks, если колонки нет
+	// (для случаев, когда БД уже существовала без user_id)
+	ensureColumn("decks", "user_id", "ALTER TABLE decks ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1 REFERENCES users(id)")
+
 	return nil
+}
+
+// ensureColumn добавляет колонку в таблицу, если её ещё нет.
+// Используется для миграций существующей схемы.
+func ensureColumn(table, column, alterSQL string) {
+	row := DB.QueryRow("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column)
+	var count int
+	if row.Scan(&count) == nil && count == 0 {
+		DB.Exec(alterSQL)
+	}
 }
 
 // CloseDB закрывает подключение к базе данных.

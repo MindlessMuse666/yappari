@@ -1,20 +1,10 @@
 {
-  "$schema": "https://wails.io/schemas/config.v2.schema.json",
   "name": "Yappari",
-  "outputfilename": "yappari",
+  "outputfilename": "yappari-server",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
-  "frontend:dev:watcher": "npm run dev",
-  "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "MindlessMuse666",
     "email": "mindlessmuse.666@gmail.com"
-  },
-  "info": {
-    "companyName": "Yappari",
-    "productName": "Yappari",
-    "productVersion": "0.2.0",
-    "copyright": "Copyright © 2026 MindlessMuse666",
-    "comments": "Десктоп-приложение для интервального повторения японских слов. Лицензия: GNU AGPL v3.0"
   }
 }

@@ -88,6 +88,21 @@ type TrainingCard struct {
 	Translation string `json:"Translation"`
 }
 
+// User представляет зарегистрированного пользователя.
+type User struct {
+	// ID — уникальный идентификатор пользователя.
+	ID int `json:"ID"`
+
+	// Email — адрес электронной почты (уникальный).
+	Email string `json:"Email"`
+
+	// PasswordHash — bcrypt-хеш пароля. Не экспортируется в JSON.
+	PasswordHash string `json:"-"`
+
+	// CreatedAt — дата и время регистрации в формате RFC3339.
+	CreatedAt string `json:"CreatedAt"`
+}
+
 // VoiceStatus содержит информацию о доступности голосов для синтеза речи.
 type VoiceStatus struct {
 	// Ja — доступен ли японский голос.

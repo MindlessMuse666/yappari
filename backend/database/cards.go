@@ -5,17 +5,18 @@ import (
 	"time"
 )
 
-// GetCardsByDeck возвращает все карточки указанной колоды, отсортированные
-// от новых к старым.
-func GetCardsByDeck(deckID int) ([]Card, error) {
+// GetCardsByDeck возвращает все карточки указанной колоды с проверкой
+// владения колоды пользователем, отсортированные от новых к старым.
+func GetCardsByDeck(deckID, userID int) ([]Card, error) {
 	rows, err := DB.Query(`
-		SELECT id, deck_id, kanji_text, furigana_text, translation,
-		       ease_factor, interval, repetitions, next_review,
-		       last_review, created_at, updated_at
-		FROM cards
-		WHERE deck_id = ?
-		ORDER BY created_at DESC
-	`, deckID)
+		SELECT c.id, c.deck_id, c.kanji_text, c.furigana_text, c.translation,
+		       c.ease_factor, c.interval, c.repetitions, c.next_review,
+		       c.last_review, c.created_at, c.updated_at
+		FROM cards c
+		JOIN decks d ON d.id = c.deck_id
+		WHERE c.deck_id = ? AND d.user_id = ?
+		ORDER BY c.created_at DESC
+	`, deckID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось получить карточки колоды %d: %w", deckID, err)
 	}
@@ -43,7 +44,7 @@ func GetCardsByDeck(deckID int) ([]Card, error) {
 	return cards, nil
 }
 
-// GetCardByID возвращает карточку по её идентификатору.
+// GetCardByID возвращает карточку по её идентификатору (без проверки владельца).
 func GetCardByID(id int) (*Card, error) {
 	var c Card
 	err := DB.QueryRow(`
@@ -63,9 +64,8 @@ func GetCardByID(id int) (*Card, error) {
 	return &c, nil
 }
 
-// CreateCard создаёт новую карточку с указанными данными. Поля SM-2
-// устанавливаются в начальные значения (EF=2.5, interval=0, repetitions=0,
-// next_review=текущее время).
+// CreateCard создаёт новую карточку. Проверка владения колодой выполняется
+// на уровне handler.
 func CreateCard(input CardInput) (*Card, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -98,7 +98,9 @@ func CreateCard(input CardInput) (*Card, error) {
 	return c, nil
 }
 
-// UpdateCard обновляет текстовые поля карточки. Поля SM-2 не изменяются.
+// UpdateCard обновляет текстовые поля карточки. Проверка владения выполняется
+// на уровне handler через JOIN с колодой.
+// Возвращает error, если карточка не найдена.
 func UpdateCard(id int, input CardInput) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -123,7 +125,7 @@ func UpdateCard(id int, input CardInput) error {
 	return nil
 }
 
-// DeleteCard удаляет карточку по её идентификатору.
+// DeleteCard удаляет карточку. Проверка владения выполняется на уровне handler.
 func DeleteCard(id int) error {
 	result, err := DB.Exec("DELETE FROM cards WHERE id = ?", id)
 	if err != nil {
