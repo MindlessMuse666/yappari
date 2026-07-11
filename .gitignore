@@ -32,9 +32,9 @@ frontend/dist/
 vendor/
 *.log
 *.tmp
-.markdownlint.yml
 .*/
 *.md
+# .markdownlint.yml
 
 # временные файлы TTS
 /tmp/yappari-tts*
