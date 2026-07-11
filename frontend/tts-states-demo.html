@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TTS States Demo — Yappari</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============ Yappari Theme ============ */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000000;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .demo-container {
+      max-width: 700px;
+      width: 100%;
+    }
+
+    /* ============ Header ============ */
+    .demo-header {
+      margin-bottom: 2rem;
+    }
+    .demo-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .demo-header p {
+      color: #c7cdd8;
+      font-size: 0.875rem;
+    }
+
+    /* ============ Section ============ */
+    .section {
+      margin-bottom: 2.5rem;
+    }
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #222;
+      padding-bottom: 0.5rem;
+    }
+
+    /* ============ State Grid (interactive) ============ */
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .state-btn {
+      padding: 0.5rem 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      border: 1px solid #333;
+      background: #111;
+      color: #c7cdd8;
+      border-radius: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .state-btn:hover { border-color: #ff0a14; color: #fff; }
+    .state-btn.active {
+      border-color: #ff0a14;
+      background: rgba(255, 10, 20, 0.1);
+      color: #ff0a14;
+    }
+
+    /* ============ TTS Status (copied from TtsStatus.vue) ============ */
+    .tts-status {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+    .tts-status.compact {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      color: #c7cdd8;
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.4rem;
+      transition: background 0.2s;
+    }
+    .tts-status.compact:hover {
+      background: #1a1a1a;
+    }
+    .tts-sep {
+      color: #333333;
+    }
+
+    .tts-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      transition: color 0.2s;
+    }
+    .tts-indicator.tts-state-ready { color: #6bcb77; }
+    .tts-indicator.tts-state-checking,
+    .tts-indicator.tts-state-loading {
+      color: #c7cdd8;
+      animation: ttsPulse 1.5s ease-in-out infinite;
+    }
+    .tts-indicator.tts-state-not_found { color: #e8904a; }
+    .tts-indicator.tts-state-error { color: #d62828; }
+
+    @keyframes ttsPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ===== Panel (detailed) ===== */
+    .tts-panel {
+      background: #111111;
+      border: 1px solid #222222;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .tts-voice-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .tts-lang-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #ffffff;
+    }
+
+    .tts-state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.2rem 0.6rem;
+      border-radius: 1rem;
+    }
+    .tts-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .tts-state-ready .tts-dot {
+      background: #6bcb77;
+      box-shadow: 0 0 6px rgba(107, 203, 119, 0.5);
+    }
+    .tts-state-ready {
+      color: #6bcb77;
+      background: rgba(107, 203, 119, 0.1);
+    }
+    .tts-state-checking .tts-dot,
+    .tts-state-loading .tts-dot {
+      background: #c7cdd8;
+      animation: ttsPulse 1.5s ease-in-out infinite;
+    }
+    .tts-state-checking,
+    .tts-state-loading {
+      color: #c7cdd8;
+      background: rgba(199, 205, 216, 0.1);
+    }
+    .tts-state-not_found .tts-dot {
+      background: #e8904a;
+    }
+    .tts-state-not_found {
+      color: #e8904a;
+      background: rgba(232, 144, 74, 0.1);
+    }
+    .tts-state-error .tts-dot {
+      background: #d62828;
+    }
+    .tts-state-error {
+      color: #d62828;
+      background: rgba(214, 40, 40, 0.1);
+    }
+
+    /* Python Progress */
+    .tts-python-progress {
+      margin-top: 0.5rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #222222;
+    }
+    .tts-progress-label {
+      font-size: 0.75rem;
+      color: #c7cdd8;
+      text-align: center;
+    }
+    .tts-install-btn {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid #ff0a14;
+      background: transparent;
+      color: #ff0a14;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .tts-install-btn:hover {
+      background: #ff0a14;
+      color: #ffffff;
+    }
+
+    /* ============ PrimeVue-style ProgressBar ============ */
+    .pv-progressbar {
+      background: #222222;
+      border-radius: 999px;
+      height: 1.25rem;
+      overflow: hidden;
+      position: relative;
+    }
+    .pv-progressbar-value {
+      background: #ff0a14;
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2rem;
+    }
+    .pv-progressbar-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* ============ Compact Preview ============ */
+    .compact-preview {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .compact-preview .preview-text {
+      font-size: 0.875rem;
+      color: #c7cdd8;
+    }
+    .compact-preview .preview-text strong {
+      color: #fff;
+    }
+
+    /* ============ Demo real-time indicator ============ */
+    .state-json {
+      background: #0a0a0a;
+      border: 1px solid #222;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      margin-top: 0.5rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: #6bcb77;
+    }
+
+    /* ============ Use-case examples ============ */
+    .example-card {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .example-card .example-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+      margin-bottom: 0.75rem;
+    }
+    .example-card .example-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .example-card .example-desc {
+      font-size: 0.8rem;
+      color: #c7cdd8;
+    }
+
+    /* ============ Legend ============ */
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: #c7cdd8;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 600px) {
+      .state-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      body { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <!-- Header -->
+    <div class="demo-header">
+      <h1>🎤 TTS Status — визуальный отладчик</h1>
+      <p>Все состояния компонента TtsStatus.vue. Нажимайте кнопки, чтобы переключать режимы.</p>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#6bcb77"></span> ready</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#c7cdd8"></span> checking</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#e8904a"></span> not_found</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#c7cdd8"></span> loading</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#d62828"></span> error</span>
+      </div>
+    </div>
+
+    <!-- State Picker (Global) -->
+    <div class="section">
+      <div class="section-title">1. Управление состояниями</div>
+      <div class="state-grid" id="statePicker">
+        <button class="state-btn" data-state="ready">✅ Ready</button>
+        <button class="state-btn active" data-state="checking">◌ Checking</button>
+        <button class="state-btn" data-state="not_found">○ Not Found</button>
+        <button class="state-btn" data-state="loading">◌ Loading</button>
+        <button class="state-btn" data-state="error">⛔ Error</button>
+      </div>
+      <p style="font-size:0.75rem;color:#555;">Состояние применяется к обоим языкам (JA и RU).</p>
+    </div>
+
+    <!-- Section: Compact Mode -->
+    <div class="section">
+      <div class="section-title">2. Compact Mode — шапка Training.vue</div>
+
+      <div class="compact-preview">
+        <span class="preview-text">📚 <strong>Повторение</strong> &nbsp;·&nbsp; 5 / 20</span>
+        <div class="tts-status compact" id="compactPreview">
+          <span class="tts-indicator" id="compactJa">
+            JA <span id="compactJaSymbol">◌</span>
+          </span>
+          <span class="tts-sep">|</span>
+          <span class="tts-indicator" id="compactRu">
+            RU <span id="compactRuSymbol">◌</span>
+          </span>
+        </div>
+      </div>
+
+      <p style="font-size:0.75rem;color:#555;margin-bottom:0.75rem;">
+        Компактный индикатор в правой части заголовка. При нажатии — открывается детальная панель (эмуляция через emit).
+      </p>
+
+      <!-- Detailed Panel -->
+      <div class="section-title">3. Detailed Mode — панель с бейджами</div>
+      <div class="tts-panel" id="detailPanel">
+        <div class="tts-voice-row">
+          <span class="tts-lang-label">Японский</span>
+          <span class="tts-state-badge" id="badgeJa">
+            <span class="tts-dot"></span>
+            <span id="badgeJaLabel">Проверка…</span>
+          </span>
+        </div>
+        <div class="tts-voice-row">
+          <span class="tts-lang-label">Русский</span>
+          <span class="tts-state-badge" id="badgeRu">
+            <span class="tts-dot"></span>
+            <span id="badgeRuLabel">Проверка…</span>
+          </span>
+        </div>
+
+        <!-- Python Progress Section (shown when installing) -->
+        <div class="tts-python-progress" id="pythonProgress" style="display:none;">
+          <div class="pv-progressbar">
+            <div class="pv-progressbar-value" id="pythonProgressBar" style="width:45%;">
+              <span class="pv-progressbar-label" id="pythonProgressLabel">45%</span>
+            </div>
+          </div>
+          <p class="tts-progress-label" style="margin-top:0.5rem;">Установка высококачественного TTS…</p>
+        </div>
+
+        <!-- Install button (shown when not found / error) -->
+        <button class="tts-install-btn" id="installBtn" style="display:none;">
+          Установить высококачественный TTS
+        </button>
+      </div>
+    </div>
+
+    <!-- Section: Live state JSON -->
+    <div class="section">
+      <div class="section-title">4. Текущее состояние (JSON)</div>
+      <div class="state-json" id="stateJson">{\n  "ja": "checking",\n  "ru": "checking"\n}</div>
+    </div>
+
+    <!-- Section: Real-world scenarios -->
+    <div class="section">
+      <div class="section-title">5. Примеры использования</div>
+
+      <div class="example-card">
+        <div class="example-label">✅ Готово — есть Web Speech голоса</div>
+        <div class="example-content">
+          <div class="tts-status compact">
+            <span class="tts-indicator tts-state-ready">JA ●</span>
+            <span class="tts-sep">|</span>
+            <span class="tts-indicator tts-state-ready">RU ●</span>
+          </div>
+          <span class="example-desc">Оба голоса найдены, TTS работает</span>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-label">🔶 Частичная готовность</div>
+        <div class="example-content">
+          <div class="tts-status compact">
+            <span class="tts-indicator tts-state-ready">JA ●</span>
+            <span class="tts-sep">|</span>
+            <span class="tts-indicator tts-state-not_found">RU ○</span>
+          </div>
+          <span class="example-desc">Японский есть, русского голоса нет</span>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-label">❌ Нет голосов + кнопка установки</div>
+        <div class="example-content" style="flex-direction:column;align-items:stretch;gap:0.75rem;">
+          <div class="tts-panel">
+            <div class="tts-voice-row">
+              <span class="tts-lang-label">Японский</span>
+              <span class="tts-state-badge tts-state-not_found">
+                <span class="tts-dot"></span>
+                Не найден
+              </span>
+            </div>
+            <div class="tts-voice-row">
+              <span class="tts-lang-label">Русский</span>
+              <span class="tts-state-badge tts-state-error">
+                <span class="tts-dot"></span>
+                Ошибка
+              </span>
+            </div>
+            <button class="tts-install-btn">Установить высококачественный TTS</button>
+          </div>
+          <span class="example-desc">Одна кнопка для установки Python TTS</span>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-label">📦 Установка Python TTS с прогрессом</div>
+        <div class="example-content" style="flex-direction:column;align-items:stretch;gap:0.75rem;">
+          <div class="tts-panel">
+            <div class="tts-voice-row">
+              <span class="tts-lang-label">Японский</span>
+              <span class="tts-state-badge tts-state-loading">
+                <span class="tts-dot"></span>
+                Загрузка…
+              </span>
+            </div>
+            <div class="tts-voice-row">
+              <span class="tts-lang-label">Русский</span>
+              <span class="tts-state-badge tts-state-loading">
+                <span class="tts-dot"></span>
+                Загрузка…
+              </span>
+            </div>
+            <div class="tts-python-progress">
+              <div class="pv-progressbar">
+                <div class="pv-progressbar-value" style="width:72%;">
+                  <span class="pv-progressbar-label">72%</span>
+                </div>
+              </div>
+              <p class="tts-progress-label">Установка высококачественного TTS…</p>
+            </div>
+          </div>
+          <span class="example-desc">ProgressBar PrimeVue в стиле #ff0a14</span>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-label">⚡ Ошибка Web Speech</div>
+        <div class="example-content">
+          <div class="tts-status compact">
+            <span class="tts-indicator tts-state-error">JA ⛔</span>
+            <span class="tts-sep">|</span>
+            <span class="tts-indicator tts-state-error">RU ⛔</span>
+          </div>
+          <span class="example-desc">Красный — ошибка, TTS недоступен</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ State management ============
+    let currentState = 'checking';
+
+    const stateLabels = {
+      ready: 'Готов',
+      checking: 'Проверка…',
+      not_found: 'Не найден',
+      loading: 'Загрузка…',
+      error: 'Ошибка',
+    };
+    const stateSymbols = {
+      ready: '●',
+      checking: '◌',
+      not_found: '○',
+      loading: '◌',
+      error: '○',
+    };
+
+    function updateAll(state) {
+      currentState = state;
+
+      // Compact indicators
+      const compactJa = document.getElementById('compactJa');
+      const compactRu = document.getElementById('compactRu');
+      compactJa.className = 'tts-indicator tts-state-' + state;
+      compactRu.className = 'tts-indicator tts-state-' + state;
+      document.getElementById('compactJaSymbol').textContent = stateSymbols[state];
+      document.getElementById('compactRuSymbol').textContent = stateSymbols[state];
+
+      // Badges
+      const badgeJa = document.getElementById('badgeJa');
+      const badgeRu = document.getElementById('badgeRu');
+      badgeJa.className = 'tts-state-badge tts-state-' + state;
+      badgeRu.className = 'tts-state-badge tts-state-' + state;
+      document.getElementById('badgeJaLabel').textContent = stateLabels[state];
+      document.getElementById('badgeRuLabel').textContent = stateLabels[state];
+
+      // Python progress — show only in 'loading' state
+      const pythonDiv = document.getElementById('pythonProgress');
+      const installBtn = document.getElementById('installBtn');
+      pythonDiv.style.display = state === 'loading' ? 'block' : 'none';
+      installBtn.style.display = (state === 'not_found' || state === 'error') ? 'block' : 'none';
+
+      // Animate progress bar if loading
+      if (state === 'loading') {
+        animateProgress();
+      }
+
+      // State buttons
+      document.querySelectorAll('.state-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.state === state);
+      });
+
+      // JSON display
+      document.getElementById('stateJson').textContent =
+        '{\n  "ja": "' + state + '",\n  "ru": "' + state + '"\n}';
+    }
+
+    let progressInterval = null;
+    function animateProgress() {
+      if (progressInterval) return;
+      const bar = document.getElementById('pythonProgressBar');
+      const label = document.getElementById('pythonProgressLabel');
+      let val = 10;
+      bar.style.width = val + '%';
+      label.textContent = val + '%';
+      progressInterval = setInterval(() => {
+        val += Math.floor(Math.random() * 15) + 1;
+        if (val >= 100) { val = 100; clearInterval(progressInterval); progressInterval = null; }
+        bar.style.width = val + '%';
+        label.textContent = val + '%';
+      }, 500);
+    }
+
+    // Reset progress when leaving loading state
+    const origUpdate = updateAll;
+    updateAll = function(state) {
+      if (state !== 'loading' && progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+        document.getElementById('pythonProgressBar').style.width = '10%';
+        document.getElementById('pythonProgressLabel').textContent = '10%';
+      }
+      origUpdate(state);
+    };
+
+    // State button clicks
+    document.getElementById('statePicker').addEventListener('click', (e) => {
+      const btn = e.target.closest('.state-btn');
+      if (!btn) return;
+      updateAll(btn.dataset.state);
+    });
+
+    // Init with checking
+    // Delayed start for progress animation demo
+    setTimeout(() => updateAll('checking'), 100);
+  </script>
+</body>
+</html>
