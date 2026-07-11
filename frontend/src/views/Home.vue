@@ -12,15 +12,17 @@
       <img src="/yappari_logo.png" alt="Yappari Logo" class="logo" draggable="false" />
       <h1>Yappari</h1>
 
-      <div class="profile-section">
-        <div class="profile-trigger" @mouseenter="showProfilePopover" @mouseleave="hideProfilePopover">
-          <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        </div>
-        <Transition name="popover">
-          <div v-if="showProfile" class="profile-popover" @mouseenter="cancelProfileTimer" @mouseleave="hideProfilePopover">
+      <div class="profile-section" @mouseenter="showProfilePopover" @mouseleave="hideProfilePopover">
+        <Transition name="profile-icon">
+          <div v-if="!showProfile" key="icon" class="profile-trigger">
+            <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+        </Transition>
+        <Transition name="profile-expand">
+          <div v-if="showProfile" key="popover" class="profile-popover" @mouseenter="cancelProfileTimer" @mouseleave="hideProfilePopover">
             <div class="popover-header">
               <svg class="popover-avatar" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -51,7 +53,7 @@
         Новая колода <kbd class="hotkey-hint">N</kbd>
       </button>
       <button v-if="decks.length > 0" @click="toggleSelectAll" class="primary-btn select-all-btn">
-        {{ allSelected ? 'Сбросить все' : 'Выбрать все' }}
+        {{ allSelected ? 'Сбросить все' : 'Выбрать все' }} <kbd class="hotkey-hint">A</kbd>
       </button>
     </div>
 
@@ -282,6 +284,12 @@ const onKeydown = (e: KeyboardEvent) => {
     e.preventDefault()
     createDeckModalVisible.value = true
   }
+
+  // A — выбрать все / снять выделение
+  if (e.code === 'KeyA' && decks.value.length > 0 && !createDeckModalVisible.value) {
+    e.preventDefault()
+    toggleSelectAll()
+  }
 }
 
 /** Состояние профиль-поповера */
@@ -290,7 +298,7 @@ let profileTimer: ReturnType<typeof setTimeout> | null = null
 
 const showProfilePopover = () => {
   if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
-  showProfile.value = true
+  profileTimer = setTimeout(() => { showProfile.value = true }, 350)
 }
 
 const hideProfilePopover = () => {
@@ -363,6 +371,12 @@ watch(selectedDeckIds, (newVal) => {
   padding: 2rem;
   max-width: 800px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
 }
 
 .header {
@@ -370,6 +384,9 @@ watch(selectedDeckIds, (newVal) => {
   align-items: center;
   gap: 1.5rem;
   margin-bottom: 2rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
 }
 
 .logo {
@@ -395,6 +412,8 @@ watch(selectedDeckIds, (newVal) => {
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .empty-state:hover {
@@ -451,11 +470,20 @@ watch(selectedDeckIds, (newVal) => {
 }
 
 .deck-list {
-  margin: 2rem 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.5rem 0.25rem 0.5rem 0;
 }
+.deck-list::-webkit-scrollbar { display: none; }
 
 .deck-item {
   display: flex;
@@ -548,20 +576,29 @@ watch(selectedDeckIds, (newVal) => {
   gap: 0.75rem;
   flex-wrap: wrap;
   align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .select-all-btn {
   margin-left: auto;
-  min-width: 170px;
+  min-width: 185px;
 }
 
 /* ===== Профиль ===== */
 .profile-section {
   position: relative;
   margin-left: auto;
+  width: 42px;
+  height: 42px;
+  z-index: 10;
 }
 
 .profile-trigger {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   width: 42px;
   height: 42px;
   border-radius: 50%;
@@ -571,31 +608,62 @@ watch(selectedDeckIds, (newVal) => {
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   color: #c7cdd8;
 }
 
 .profile-trigger:hover {
   border-color: #ff0a14;
   color: #ffffff;
-  transform: scale(1.1);
   box-shadow: 0 0 20px rgba(255, 10, 20, 0.25);
 }
 
 .profile-icon {
   display: block;
-  transition: transform 0.3s ease;
 }
 
-.profile-trigger:hover .profile-icon {
-  transform: scale(1.05);
+/* Profile icon: fade out (leaving) */
+.profile-icon-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.profile-icon-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Profile icon: fade in (re-entering) */
+.profile-icon-enter-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.profile-icon-enter-from {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Profile popover: expand in */
+.profile-expand-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.profile-expand-enter-from {
+  opacity: 0;
+  transform: scale(0.3);
+  transform-origin: top right;
+}
+
+/* Profile popover: shrink out */
+.profile-expand-leave-active {
+  transition: all 0.15s ease;
+}
+.profile-expand-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
+  transform-origin: top right;
 }
 
 .profile-popover {
   position: absolute;
-  top: calc(100% + 12px);
+  top: 0;
   right: 0;
-  width: 240px;
+  width: 290px;
   background: #1a1a1a;
   border: 1px solid #333333;
   border-radius: 0.75rem;
@@ -635,8 +703,10 @@ watch(selectedDeckIds, (newVal) => {
   font-size: 0.9rem;
   color: #ffffff;
   font-weight: 500;
-  word-break: break-all;
   line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .popover-divider {
@@ -701,6 +771,10 @@ watch(selectedDeckIds, (newVal) => {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  padding-top: 1rem;
 }
 
 .training-btn-wrapper {

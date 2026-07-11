@@ -359,6 +359,9 @@ watch(cardFormModalVisible, (open) => {
   padding: 2rem;
   max-width: 1000px;
   margin: 0 auto;
+  min-height: 100vh;
+  box-sizing: border-box;
+  position: relative;
 }
 
 .header {
@@ -367,6 +370,8 @@ watch(cardFormModalVisible, (open) => {
   align-items: center;
   margin-bottom: 2rem;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
 }
 
 .deck-name-input {
@@ -399,6 +404,8 @@ watch(cardFormModalVisible, (open) => {
 
 .add-card {
   margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .empty-state {
@@ -406,12 +413,16 @@ watch(cardFormModalVisible, (open) => {
   padding: 4rem 2rem;
   color: #c7cdd8;
   font-size: 1.1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .card-item {
@@ -420,6 +431,7 @@ watch(cardFormModalVisible, (open) => {
   border-radius: 1rem;
   padding: 1.25rem;
   position: relative;
+  z-index: 1;
   cursor: pointer;
   transition: all 0.2s;
 }

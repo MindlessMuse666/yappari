@@ -1,12 +1,5 @@
 <template>
   <div class="auth-page">
-    <!-- Анимированный фон -->
-    <div class="animated-bg" aria-hidden="true">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-    </div>
-
     <div class="auth-card">
       <div class="header">
         <img src="/yappari_logo.png" alt="Yappari Logo" class="logo" draggable="false" />
@@ -26,14 +19,14 @@
 
         <div class="input-group">
           <label for="password">Пароль</label>
-          <InputText id="password" v-model="password" type="password" placeholder="Введите пароль (минимум 6 символов)"
+          <InputText id="password" v-model="password" type="password" placeholder="Введите пароль"
             class="custom-input" :class="{ 'input-error': errors.password }"
             autocomplete="current-password"
             @blur="onBlur('password')" @input="clearError('password')" />
           <div v-if="errors.password" class="field-error">{{ errors.password }}</div>
         </div>
 
-        <div v-if="submitError" class="submit-error">{{ submitError }}</div>
+        <div class="submit-error-space"><div v-if="submitError" class="submit-error">{{ submitError }}</div></div>
 
         <Button label="Войти" type="submit" class="primary-btn auth-btn" :loading="loading" />
       </form>
@@ -140,63 +133,7 @@ const handleLogin = async () => {
   min-height: 100vh;
   padding: 1rem;
   overflow: hidden;
-}
-
-/* ===== Анимированный фон ===== */
-.animated-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: #000000;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  will-change: transform;
-  pointer-events: none;
-}
-
-.orb-1 {
-  width: 700px;
-  height: 700px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 10, 20, 0.12), transparent 70%);
-  top: -200px;
-  left: -200px;
-  animation: orbFloat 25s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle at 70% 70%, rgba(255, 60, 70, 0.08), transparent 70%);
-  bottom: -150px;
-  right: -150px;
-  animation: orbFloat 30s ease-in-out infinite reverse;
-}
-
-.orb-3 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 100, 110, 0.05), transparent 70%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: orbPulse 20s ease-in-out infinite;
-}
-
-@keyframes orbFloat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(60px, -80px) scale(1.08); }
-  50% { transform: translate(-40px, 40px) scale(0.92); }
-  75% { transform: translate(70px, 50px) scale(1.04); }
-}
-
-@keyframes orbPulse {
-  0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.3); }
+  box-sizing: border-box;
 }
 
 /* ===== Карточка ===== */
@@ -300,9 +237,13 @@ const handleLogin = async () => {
   border-radius: 0.5rem;
 }
 
+.submit-error-space {
+  min-height: 0;
+}
+
 .auth-btn {
   width: 100%;
-  margin-top: 0.5rem;
+  margin-top: 0;
   padding: 0.85rem 1.5rem;
 }
 
@@ -351,6 +292,7 @@ const handleLogin = async () => {
   background: #ff0a14 !important;
   border: none !important;
   color: white !important;
+  gap: 0.5rem !important;
 }
 
 .auth-btn.p-button:hover:not(:disabled) {
