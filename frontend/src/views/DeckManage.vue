@@ -25,7 +25,7 @@
     </div>
 
     <div class="add-card">
-      <button @click="cardFormModalVisible = true" class="primary-btn">
+      <button @click="openNewCardForm" class="primary-btn">
         <span class="icon">+</span>
         Добавить карточку <kbd class="hotkey-hint">Ctrl Q</kbd>
       </button>
@@ -51,7 +51,7 @@
 
     <!-- Модальное окно создания/редактирования карточки -->
     <Dialog v-model:visible="cardFormModalVisible" :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
-      class="custom-dialog" :closable="false" @show="focusKanjiInput">
+      class="custom-dialog" :closable="false" :draggable="false" @show="focusKanjiInput" @hide="onDialogHide">
       <div class="form-content" :class="{ shake: shake }">
         <div class="input-group">
           <label for="kanji-text">
@@ -150,14 +150,29 @@ const goBack = () => {
   router.push({ name: 'Home' })
 }
 
+/** Открывает форму создания новой карточки со сбросом состояния */
+const openNewCardForm = () => {
+  playClickSound()
+  editingCard.value = null
+  cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
+  errors.value = { kanjiText: '', translation: '' }
+  cardFormModalVisible.value = true
+}
+
+/** Сбрасывает состояние при скрытии диалога (Escape, клик вне окна) */
+const onDialogHide = () => {
+  editingCard.value = null
+  cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
+  errors.value = { kanjiText: '', translation: '' }
+}
+
 /** Escape → на главную (если не открыта модалка карточки) */
 const onKeydown = (e: KeyboardEvent) => {
   // Ctrl/Cmd+Q → новая карточка
   if ((e.ctrlKey || e.metaKey) && e.code === 'KeyQ') {
     e.preventDefault()
     if (!cardFormModalVisible.value) {
-      cardFormModalVisible.value = true
-      playClickSound()
+      openNewCardForm()
     }
     return
   }
@@ -642,43 +657,6 @@ watch(cardFormModalVisible, (open) => {
   backdrop-filter: blur(8px);
   background: rgba(0, 0, 0, 0.5) !important;
   pointer-events: auto !important;
-}
-
-.custom-dialog .p-dialog {
-  background: #111111 !important;
-  border: 1px solid #c7cdd8 !important;
-  border-radius: 1.5rem !important;
-  width: 90vw !important;
-  max-width: 550px !important;
-}
-
-.custom-dialog .p-dialog-header {
-  background: #111111 !important;
-  border-bottom: 1px solid #222222 !important;
-  color: white !important;
-  border-radius: 1.5rem 1.5rem 0 0 !important;
-  padding: 1.75rem !important;
-}
-
-.custom-dialog .p-dialog-content {
-  background: #111111 !important;
-  color: white !important;
-  padding: 1.75rem !important;
-}
-
-.custom-dialog .p-dialog-footer {
-  background: #111111 !important;
-  border-top: 1px solid #222222 !important;
-  border-radius: 0 0 1.5rem 1.5rem !important;
-  padding: 1.75rem !important;
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
-
-.custom-dialog .p-dialog-title {
-  font-size: 1.35rem !important;
-  font-weight: 700 !important;
 }
 
 .custom-dialog .p-button {

@@ -215,3 +215,82 @@ ruby rt {
 .p-progressbar-value {
   background-color: #ff0a14 !important;
 }
+
+/* ===== Анимации PrimeVue Dialog ===== */
+
+/* Маска — плавное появление/исчезание */
+.p-dialog-mask {
+    animation: dlg-mask-enter 0.3s ease;
+    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.5) !important;
+    pointer-events: auto !important;
+}
+.p-dialog-mask.p-overlay-mask-leave-active {
+    animation: dlg-mask-leave 0.2s ease forwards;
+}
+@keyframes dlg-mask-enter {
+    from { opacity: 0; }
+}
+@keyframes dlg-mask-leave {
+    to { opacity: 0; }
+}
+
+/* ===== PrimeVue Dialog Override ===== */
+
+/* Диалог — ширина, скругление, бордер */
+.custom-dialog .p-dialog {
+    background: #111111 !important;
+    border: 1px solid #c7cdd8 !important;
+    border-radius: 1rem !important;
+    overflow: hidden !important;
+    width: min(90vw, 680px) !important;
+}
+
+.custom-dialog .p-dialog-header {
+    background: #111111 !important;
+    border-bottom: 1px solid #222222 !important;
+    color: white !important;
+    border-radius: 1rem 1rem 0 0 !important;
+    padding: 1.75rem !important;
+}
+
+.custom-dialog .p-dialog-content {
+    background: #111111 !important;
+    color: white !important;
+    padding: 1.75rem !important;
+}
+
+.custom-dialog .p-dialog-footer {
+    background: #111111 !important;
+    border-top: 1px solid #222222 !important;
+    border-radius: 0 0 1rem 1rem !important;
+    padding: 1.75rem !important;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.custom-dialog .p-dialog-title {
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+}
+
+/* Анимация появления/исчезания диалога — напрямую переопределяем классы PrimeVue */
+.p-dialog-enter-active {
+    animation: pv-dlg-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+.p-dialog-leave-active {
+    animation: pv-dlg-leave 0.2s ease !important;
+}
+@keyframes pv-dlg-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.88) translateY(-20px);
+    }
+}
+@keyframes pv-dlg-leave {
+    to {
+        opacity: 0;
+        transform: scale(0.94) translateY(10px);
+    }
+}

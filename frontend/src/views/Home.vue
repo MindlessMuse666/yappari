@@ -89,7 +89,7 @@
 
     <!-- Модальное окно создания колоды -->
     <Dialog v-model:visible="createDeckModalVisible" header="Создать колоду" class="custom-dialog" :closable="false"
-      @show="focusDeckNameInput">
+      :draggable="false" @show="focusDeckNameInput">
       <div class="form-content" :class="{ shake: shake }">
         <div class="input-group">
           <label for="deck-name">
@@ -489,6 +489,7 @@ watch(selectedDeckIds, (newVal) => {
 
 .select-all-btn {
   margin-left: auto;
+  min-width: 170px;
 }
 
 .primary-btn {
@@ -755,43 +756,6 @@ watch(selectedDeckIds, (newVal) => {
   backdrop-filter: blur(8px);
   background: rgba(0, 0, 0, 0.5) !important;
   pointer-events: auto !important;
-}
-
-.custom-dialog .p-dialog {
-  background: #111111 !important;
-  border: 1px solid #c7cdd8 !important;
-  border-radius: 1.5rem !important;
-  width: 90vw !important;
-  max-width: 550px !important;
-}
-
-.custom-dialog .p-dialog-header {
-  background: #111111 !important;
-  border-bottom: 1px solid #222222 !important;
-  color: white !important;
-  border-radius: 1.5rem 1.5rem 0 0 !important;
-  padding: 1.75rem !important;
-}
-
-.custom-dialog .p-dialog-content {
-  background: #111111 !important;
-  color: white !important;
-  padding: 1.75rem !important;
-}
-
-.custom-dialog .p-dialog-footer {
-  background: #111111 !important;
-  border-top: 1px solid #222222 !important;
-  border-radius: 0 0 1.5rem 1.5rem !important;
-  padding: 1.75rem !important;
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
-
-.custom-dialog .p-dialog-title {
-  font-size: 1.35rem !important;
-  font-weight: 700 !important;
 }
 
 .custom-dialog .p-button {

@@ -101,6 +101,7 @@ const confirm = (
 
 /** Закрывает alert-окно */
 const close = () => {
+  mainBtn.value?.blur()
   visible.value = false
   if (resolveCallback) {
     resolveCallback()
@@ -110,6 +111,7 @@ const close = () => {
 
 /** Обрабатывает результат confirm */
 const confirmAction = (value: boolean) => {
+  mainBtn.value?.blur()
   visible.value = false
   if (confirmResolveCallback) {
     confirmResolveCallback(value)
@@ -183,18 +185,20 @@ defineExpose({ show, confirm })
   justify-content: center;
   z-index: 9999;
   padding: 1rem;
+  will-change: opacity, backdrop-filter;
 }
 
 .alert-modal {
   background: #111111;
   border: 1px solid #c7cdd8;
-  border-radius: 1.5rem;
+  border-radius: 1rem;
   width: 100%;
   max-width: 460px;
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
   position: relative;
+  will-change: transform;
 }
 
 .alert-header {
@@ -282,23 +286,38 @@ defineExpose({ show, confirm })
 
 /* Анимации */
 .alert-enter-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              backdrop-filter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .alert-leave-active {
-  transition: all 0.15s ease;
+  transition: opacity 0.2s ease,
+              backdrop-filter 0.2s ease;
 }
 
-.alert-enter-from,
+.alert-enter-active .alert-modal {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.alert-leave-active .alert-modal {
+  transition: transform 0.2s ease;
+}
+
+.alert-enter-from {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+}
+
 .alert-leave-to {
   opacity: 0;
+  backdrop-filter: blur(0px);
 }
 
 .alert-enter-from .alert-modal {
-  transform: scale(0.85) translateY(-30px);
+  transform: scale(0.85) translateY(-24px);
 }
 
 .alert-leave-to .alert-modal {
-  transform: scale(0.9) translateY(10px);
+  transform: scale(0.92) translateY(12px);
 }
 </style>
