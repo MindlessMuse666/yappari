@@ -13,7 +13,7 @@
           <div class="alert-header">
             <span class="alert-title">{{ title }}</span>
           </div>
-          <div class="alert-body">
+          <div class="alert-body" :class="{ 'alert-body--error': isError }">
             <p class="alert-message">{{ message }}</p>
           </div>
           <div class="alert-footer">
@@ -60,6 +60,7 @@ const visible = ref(false)
 const mode = ref<'alert' | 'confirm'>('alert')
 const title = ref('')
 const message = ref('')
+const isError = ref(false)
 const buttonText = ref('OK')
 const confirmText = ref('Подтвердить')
 const cancelText = ref('Отмена')
@@ -69,11 +70,12 @@ let resolveCallback: (() => void) | null = null
 let confirmResolveCallback: ((value: boolean) => void) | null = null
 
 /** Показывает alert-окно с одной кнопкой */
-const show = (params: { title?: string; message: string; buttonText?: string }): Promise<void> => {
+const show = (params: { title?: string; message: string; buttonText?: string; isError?: boolean }): Promise<void> => {
   return new Promise((resolve) => {
     mode.value = 'alert'
     title.value = params.title || 'Уведомление'
     message.value = params.message
+    isError.value = params.isError ?? false
     buttonText.value = params.buttonText || 'OK'
     visible.value = true
     resolveCallback = resolve
@@ -122,9 +124,11 @@ const handleOverlayClick = () => {
   }
 }
 
-/** Обработчик клавиш Escape и Enter */
+/** Обработчик клавиш Escape, Enter и блокировка Space */
 const onKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && visible.value) {
+  if (!visible.value) return
+
+  if (e.key === 'Escape') {
     e.stopImmediatePropagation()
     if (mode.value === 'confirm') {
       confirmAction(false)
@@ -132,7 +136,7 @@ const onKeydown = (e: KeyboardEvent) => {
       close()
     }
   }
-  if (e.key === 'Enter' && visible.value) {
+  if (e.key === 'Enter') {
     e.preventDefault()
     if (mode.value === 'confirm') {
       confirmAction(true)
@@ -140,10 +144,27 @@ const onKeydown = (e: KeyboardEvent) => {
       close()
     }
   }
+  if (e.key === ' ' || e.code === 'Space') {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+  }
 }
 
-onMounted(() => document.addEventListener('keydown', onKeydown))
-onUnmounted(() => document.removeEventListener('keydown', onKeydown))
+/** Блокировка прокрутки колёсиком мыши при открытом модальном окне */
+const onWheel = (e: WheelEvent) => {
+  if (visible.value) {
+    e.preventDefault()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  document.addEventListener('wheel', onWheel, { passive: false })
+})
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('wheel', onWheel)
+})
 
 defineExpose({ show, confirm })
 </script>
@@ -170,9 +191,10 @@ defineExpose({ show, confirm })
   border-radius: 1.5rem;
   width: 100%;
   max-width: 460px;
+  max-height: 80vh;
+  overflow-y: auto;
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
   position: relative;
-  overflow: hidden;
 }
 
 .alert-header {
@@ -190,11 +212,16 @@ defineExpose({ show, confirm })
   padding: 0.5rem 1.75rem 1.5rem;
 }
 
+.alert-body--error .alert-message {
+  color: #ff8a8a;
+}
+
 .alert-message {
   color: #c7cdd8;
   font-size: 1rem;
   margin: 0;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .alert-footer {

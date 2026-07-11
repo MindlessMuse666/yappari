@@ -131,7 +131,7 @@ import FuriganaText from '../components/FuriganaText.vue'
 import type { TrainingCard as TrainingCardType } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
-import { speakBoth, speakJapanese, speakRussian, checkTTSAvailability } from '../composables/useTts'
+import { speakBoth, speakJapanese, speakRussian, checkTTSAvailability, isTtsUnavailableShown, markTtsUnavailableShown } from '../composables/useTts'
 import { playClickSound } from '../composables/useSound'
 import { triggerConfetti } from '../utils/confetti'
 
@@ -186,6 +186,10 @@ let answerTimer: ReturnType<typeof setTimeout> | null = null
 /** Флаг загрузки карточек — пока true, показываем экран перехода */
 const isLoading = ref(true)
 
+/** Минимальный интервал между нажатиями Space (мс) */
+const SPACE_COOLDOWN_MS = 400
+let lastSpaceTime = 0
+
 /** Звук победы при завершении тренировки */
 const successSound = ref<HTMLAudioElement | null>(null)
 
@@ -200,6 +204,7 @@ const loadCards = async () => {
     await alert({
       title: 'Ошибка',
       message: 'Не удалось загрузить карточки для тренировки: ' + e,
+      isError: true,
     })
   }
 
@@ -246,6 +251,9 @@ const onKeydown = (e: KeyboardEvent) => {
   // Space — показать ответ или далее (в свободном режиме)
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault()
+    const now = Date.now()
+    if (now - lastSpaceTime < SPACE_COOLDOWN_MS) return
+    lastSpaceTime = now
     if (!showAnswer.value) {
       showAnswerFn()
     } else if (mode.value === 'free' && !isAutoPlaying.value) {
@@ -325,6 +333,7 @@ const submitReview = async (grade: number) => {
     await alert({
       title: 'Ошибка',
       message: 'Не удалось отправить повторение: ' + e,
+      isError: true,
     })
   }
 }
@@ -416,6 +425,7 @@ onMounted(async () => {
     await alert({
       title: 'Ошибка',
       message: 'Не выбраны колоды для тренировки. Вернитесь на главную и выберите хотя бы одну колоду.',
+      isError: true,
     })
     router.push({ name: 'Home' })
     return
@@ -429,8 +439,8 @@ onMounted(async () => {
       const ttsStatus = await checkTTSAvailability()
       ttsAvailable.value = ttsStatus.available
       if (!ttsStatus.available) {
-        if (ttsStatus.status === 1) { // StatusInitializing
-          // TTS ещё настраивается (первый запуск)
+        if (ttsStatus.status === 1 && !isTtsUnavailableShown()) { // StatusInitializing
+          markTtsUnavailableShown()
           await alert({
             title: 'Озвучка настраивается',
             message:
@@ -440,15 +450,9 @@ onMounted(async () => {
               + 'Озвучка станет доступна автоматически.',
           })
           startPollingTTS()
-        } else {
-          await alert({
-            title: 'Озвучка недоступна',
-            message:
-              'TTS-модели не загружены. '
-              + ttsStatus.message
-              + '\n\nПроверьте подключение к интернету при первом запуске. '
-              + 'Основная функциональность приложения работает без ограничений.',
-          })
+        } else if (ttsStatus.status !== 1) {
+          // Остальные состояния — просто логируем, banner покажет подсказку
+          console.warn('TTS недоступен:', ttsStatus.message)
         }
       }
     } catch {
@@ -1001,6 +1005,9 @@ onUnmounted(() => {
   text-align: center;
   font-size: 0.85rem;
   color: #c7cdd8;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .go-home-btn {

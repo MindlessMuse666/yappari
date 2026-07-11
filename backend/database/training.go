@@ -26,18 +26,44 @@ func GetTrainingCards(mode string, deckIDs []int) ([]TrainingCard, error) {
 		placeholders[i] = id
 	}
 
-	query := `
+	deckPlaceholders := `?` + strings.Repeat(",?", len(deckIDs)-1)
+
+	// Базовый запрос: все карточки из указанных колод
+	baseQuery := `
 		SELECT id, kanji_text, furigana_text, translation
 		FROM cards
-		WHERE deck_id IN (?` + strings.Repeat(",?", len(deckIDs)-1) + `)
+		WHERE deck_id IN (` + deckPlaceholders + `)
 	`
 
 	if mode == "interval" {
+		// Сначала пробуем получить только просроченные карточки
 		now := time.Now().UTC().Format(time.RFC3339)
-		query += ` AND next_review <= ?`
-		placeholders = append(placeholders, now)
+		overdueQuery := baseQuery + ` AND next_review <= ?`
+
+		overduePlaceholders := make([]any, 0, len(deckIDs)+1)
+		overduePlaceholders = append(overduePlaceholders, placeholders...)
+		overduePlaceholders = append(overduePlaceholders, now)
+
+		cards, err := queryCards(overdueQuery, overduePlaceholders...)
+		if err != nil {
+			return nil, err
+		}
+		if len(cards) > 0 {
+			return cards, nil
+		}
+
+		// Просроченных нет — берём все карточки (режим доступен всегда)
 	}
 
+	cards, err := queryCards(baseQuery, placeholders...)
+	if err != nil {
+		return nil, err
+	}
+	return cards, nil
+}
+
+// queryCards выполняет запрос и возвращает список карточек тренировки.
+func queryCards(query string, placeholders ...any) ([]TrainingCard, error) {
 	rows, err := DB.Query(query, placeholders...)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось получить карточки для тренировки: %w", err)

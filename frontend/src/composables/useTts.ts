@@ -17,6 +17,21 @@ import { useAlert } from './useAlert'
 const isWails = typeof window !== 'undefined' && window.go?.main?.App != null
 
 /**
+ * Флаги: показывались ли уже TTS-ошибки (показываем только один раз за сессию).
+ */
+let ttsUnavailableShown = false
+let ttsErrorShown = false
+
+/** Проверяет, показывалось ли уже уведомление о недоступности TTS */
+export const isTtsUnavailableShown = () => ttsUnavailableShown
+
+/** Отмечает, что уведомление о недоступности TTS было показано */
+export const markTtsUnavailableShown = () => { ttsUnavailableShown = true }
+
+/** Проверяет, показывалась ли уже ошибка озвучки */
+export const isTtsErrorShown = () => ttsErrorShown
+
+/**
  * Загружает список доступных голосов Web Speech API.
  *
  * На Chrome голоса приходят асинхронно, поэтому оборачиваем в Promise
@@ -240,11 +255,13 @@ export const speakJapanese = async (text: string): Promise<void> => {
     await playAudio(result.audio, result.mime)
   } catch (e) {
     console.error('Ошибка озвучки (ja):', e)
-    if (isWails) {
+    if (isWails && !ttsErrorShown) {
+      ttsErrorShown = true
       const { alert } = useAlert()
       await alert({
         title: 'Ошибка озвучки',
         message: 'Не удалось воспроизвести японскую озвучку. TTS-модели не загружены. Проверьте подключение к интернету при первом запуске.',
+        isError: true,
       })
     }
   }
@@ -261,11 +278,13 @@ export const speakRussian = async (text: string): Promise<void> => {
     await playAudio(result.audio, result.mime)
   } catch (e) {
     console.error('Ошибка озвучки (ru):', e)
-    if (isWails) {
+    if (isWails && !ttsErrorShown) {
+      ttsErrorShown = true
       const { alert } = useAlert()
       await alert({
         title: 'Ошибка озвучки',
         message: 'Не удалось воспроизвести русскую озвучку. TTS-модели не загружены. Проверьте подключение к интернету при первом запуске.',
+        isError: true,
       })
     }
   }
@@ -286,11 +305,13 @@ export const speakBoth = async (kanjiText: string, translation: string): Promise
     await playAudio(ruResult.audio, ruResult.mime)
   } catch (e) {
     console.error('Ошибка озвучки:', e)
-    if (isWails) {
+    if (isWails && !ttsErrorShown) {
+      ttsErrorShown = true
       const { alert } = useAlert()
       await alert({
         title: 'Ошибка озвучки',
         message: 'Не удалось воспроизвести озвучку. TTS-модели не загружены. Проверьте подключение к интернету при первом запуске.',
+        isError: true,
       })
     }
   }

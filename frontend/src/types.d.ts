@@ -54,7 +54,7 @@ export interface VoiceStatus {
 
 /** Тип expose-методов компонента CustomAlert */
 export interface CustomAlertExposed {
-  show: (params: { title?: string; message: string; buttonText?: string }) => Promise<void>
+  show: (params: { title?: string; message: string; buttonText?: string; isError?: boolean }) => Promise<void>
   confirm: (params: { title?: string; message: string; confirmText?: string; cancelText?: string }) => Promise<boolean>
 }
 

@@ -14,7 +14,7 @@
     </div>
 
     <div class="actions">
-      <button @click="createDeckModalVisible = true" class="primary-btn">
+      <button v-if="decks.length > 0" @click="createDeckModalVisible = true" class="primary-btn">
         <span class="icon">+</span>
         Новая колода <kbd class="hotkey-hint">Ctrl N</kbd>
       </button>
@@ -23,8 +23,12 @@
       </button>
     </div>
 
-    <div v-if="decks.length === 0" class="empty-state">
-      <p>У тебя пока нет колод. Создай первую!</p>
+    <div v-if="decks.length === 0" class="empty-state" @click="createDeckModalVisible = true">
+      <div class="empty-state-icon">
+        <span class="empty-plus">+</span>
+      </div>
+      <h2 class="empty-state-title">У тебя пока нет колод.</h2>
+      <p class="empty-state-subtitle">Создай первую!</p>
     </div>
 
     <div v-else class="deck-list">
@@ -145,9 +149,12 @@ const loadDecks = async () => {
   try {
     isLoading.value = true
     decks.value = await getDecks()
+    // Очищаем выбор от несуществующих колод (мог остаться stale ID в localStorage)
+    const validIds = new Set(decks.value.map(d => d.ID))
+    selectedDeckIds.value = selectedDeckIds.value.filter(id => validIds.has(id))
   } catch (e) {
     console.error('Ошибка загрузки колод:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоды: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоды: ' + e, isError: true })
   } finally {
     isLoading.value = false
   }
@@ -186,7 +193,7 @@ const createDeck = async () => {
     await loadDecks()
   } catch (e) {
     console.error('Ошибка создания колоды:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось создать колоду: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось создать колоду: ' + e, isError: true })
   } finally {
     isLoading.value = false
   }
@@ -270,6 +277,17 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('wheel', preventWheel)
+})
+
+/** Блокировка прокрутки колёсиком при открытой модалке создания колоды */
+const preventWheel = (e: WheelEvent) => { e.preventDefault() }
+watch(createDeckModalVisible, (open) => {
+  if (open) {
+    document.addEventListener('wheel', preventWheel, { passive: false })
+  } else {
+    document.removeEventListener('wheel', preventWheel)
+  }
 })
 
 /** Сохраняет выбранные колоды в localStorage */
@@ -309,9 +327,65 @@ watch(selectedDeckIds, (newVal) => {
 
 .empty-state {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 5rem 2rem;
+  border: 2px dashed #222222;
+  border-radius: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.empty-state:hover {
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #111111;
+  border: 2px solid #222222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.empty-state:hover .empty-state-icon {
+  border-color: #ff0a14;
+  background: rgba(255, 10, 20, 0.08);
+}
+
+.empty-plus {
+  font-size: 2.5rem;
+  color: #ff0a14;
+  font-weight: 300;
+  line-height: 1;
+  transition: color 0.3s ease;
+}
+
+.empty-state:hover .empty-plus {
+  color: #ffffff;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-state-subtitle {
+  font-size: 1.15rem;
   color: #c7cdd8;
-  font-size: 1.1rem;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.empty-state:hover .empty-state-subtitle {
+  color: #ff0a14;
 }
 
 .deck-list {

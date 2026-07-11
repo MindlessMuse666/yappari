@@ -32,6 +32,7 @@ export type AlertParams = {
   title?: string
   message: string
   buttonText?: string
+  isError?: boolean
 }
 
 /** Параметры confirm-окна */

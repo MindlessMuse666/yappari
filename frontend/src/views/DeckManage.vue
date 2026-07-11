@@ -90,7 +90,7 @@
  * @module views/DeckManage
  */
 
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -130,7 +130,7 @@ const loadDeck = async () => {
     if (deck) deckName.value = deck.Name
   } catch (e) {
     console.error('Ошибка загрузки колоды:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоду: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоду: ' + e, isError: true })
   }
 }
 
@@ -140,7 +140,7 @@ const loadCards = async () => {
     cards.value = await getCardsByDeck(deckId)
   } catch (e) {
     console.error('Ошибка загрузки карточек:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось загрузить карточки: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось загрузить карточки: ' + e, isError: true })
   }
 }
 
@@ -176,7 +176,7 @@ const updateDeckName = async () => {
     await updateDeck(deckId, deckName.value)
   } catch (e) {
     console.error('Ошибка обновления названия:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось обновить название: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось обновить название: ' + e, isError: true })
   }
 }
 
@@ -195,7 +195,7 @@ const resetDeckProgress = async () => {
     await alert({ title: 'Успешно', message: 'Прогресс успешно сброшен!' })
   } catch (e) {
     console.error('Ошибка сброса прогресса:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось сбросить прогресс: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось сбросить прогресс: ' + e, isError: true })
   }
 }
 
@@ -214,7 +214,7 @@ const deleteDeck = async () => {
     router.push({ name: 'Home' })
   } catch (e) {
     console.error('Ошибка удаления колоды:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось удалить колоду: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось удалить колоду: ' + e, isError: true })
   }
 }
 
@@ -275,7 +275,7 @@ const deleteCardById = async (id: number) => {
     await loadCards()
   } catch (e) {
     console.error('Ошибка удаления карточки:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось удалить карточку: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось удалить карточку: ' + e, isError: true })
   }
 }
 
@@ -302,7 +302,7 @@ const saveCard = async () => {
     await loadCards()
   } catch (e) {
     console.error('Ошибка сохранения карточки:', e)
-    await alert({ title: 'Ошибка', message: 'Не удалось сохранить карточку: ' + e })
+    await alert({ title: 'Ошибка', message: 'Не удалось сохранить карточку: ' + e, isError: true })
   }
 }
 
@@ -323,6 +323,17 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('wheel', preventWheel)
+})
+
+/** Блокировка прокрутки колёсиком при открытой модалке карточки */
+const preventWheel = (e: WheelEvent) => { e.preventDefault() }
+watch(cardFormModalVisible, (open) => {
+  if (open) {
+    document.addEventListener('wheel', preventWheel, { passive: false })
+  } else {
+    document.removeEventListener('wheel', preventWheel)
+  }
 })
 </script>
 
