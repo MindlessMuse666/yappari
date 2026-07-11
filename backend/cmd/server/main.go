@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 
@@ -74,7 +75,18 @@ func main() {
 	}
 
 	// Статические файлы фронтенда
+	r.Static("/assets", "./frontend/dist/assets")
+	r.StaticFile("/favicon.ico", "./frontend/dist/favicon.ico")
+	// SPA fallback: если файл существует — отдаём его, иначе index.html
 	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if path != "/" {
+			fullPath := filepath.Join("./frontend/dist", path)
+			if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
+				c.File(fullPath)
+				return
+			}
+		}
 		c.File("./frontend/dist/index.html")
 	})
 
