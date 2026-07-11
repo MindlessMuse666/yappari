@@ -119,7 +119,9 @@ func ensureColumn(table, column, alterSQL string) {
 	row := DB.QueryRow("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?", table, column)
 	var count int
 	if row.Scan(&count) == nil && count == 0 {
-		DB.Exec(alterSQL)
+		if _, err := DB.Exec(alterSQL); err != nil {
+			fmt.Printf("failed to alter table: %v\n", err)
+		}
 	}
 }
 

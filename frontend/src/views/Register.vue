@@ -1,3 +1,11 @@
+<!--
+  Страница регистрации нового пользователя.
+
+  Форма с валидацией email, пароля и подтверждения пароля.
+  При успешной регистрации перенаправляет на главную страницу.
+  Содержит ссылку на вход.
+-->
+
 <template>
   <div class="auth-page">
     <div class="auth-card">
@@ -10,32 +18,31 @@
       <form @submit.prevent="handleRegister" class="auth-form" :class="{ shake: shake }" novalidate>
         <div class="input-group">
           <label for="email">Email</label>
-          <InputText id="email" v-model="email" type="email" placeholder="Введите ваш email"
-            class="custom-input" :class="{ 'input-error': errors.email }"
-            autocomplete="email"
-            @blur="onBlur('email')" @input="clearError('email')" />
+          <InputText id="email" v-model="email" type="email" placeholder="Введите ваш email" class="custom-input"
+            :class="{ 'input-error': errors.email }" autocomplete="email" @blur="onBlur('email')"
+            @input="clearError('email')" />
           <div v-if="errors.email" class="field-error">{{ errors.email }}</div>
         </div>
 
         <div class="input-group">
           <label for="password">Пароль</label>
-          <InputText id="password" v-model="password" type="password" placeholder="Введите пароль"
-            class="custom-input" :class="{ 'input-error': errors.password }"
-            autocomplete="new-password"
-            @blur="onBlur('password')" @input="clearError('password')" />
+          <InputText id="password" v-model="password" type="password" placeholder="Введите пароль" class="custom-input"
+            :class="{ 'input-error': errors.password }" autocomplete="new-password" @blur="onBlur('password')"
+            @input="clearError('password')" />
           <div v-if="errors.password" class="field-error">{{ errors.password }}</div>
         </div>
 
         <div class="input-group">
           <label for="confirm-password">Подтверждение пароля</label>
-          <InputText id="confirm-password" v-model="confirmPassword" type="password" placeholder="Введите пароль ещё раз"
-            class="custom-input" :class="{ 'input-error': errors.confirmPassword }"
-            autocomplete="new-password"
-            @blur="onBlur('confirmPassword')" @input="clearError('confirmPassword')" />
+          <InputText id="confirm-password" v-model="confirmPassword" type="password"
+            placeholder="Введите пароль ещё раз" class="custom-input" :class="{ 'input-error': errors.confirmPassword }"
+            autocomplete="new-password" @blur="onBlur('confirmPassword')" @input="clearError('confirmPassword')" />
           <div v-if="errors.confirmPassword" class="field-error">{{ errors.confirmPassword }}</div>
         </div>
 
-        <div class="submit-error-space"><div v-if="submitError" class="submit-error">{{ submitError }}</div></div>
+        <div class="submit-error-space">
+          <div v-if="submitError" class="submit-error">{{ submitError }}</div>
+        </div>
 
         <Button label="Зарегистрироваться" type="submit" class="primary-btn auth-btn" :loading="loading" />
       </form>
@@ -49,6 +56,15 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Страница регистрации нового пользователя.
+ *
+ * Форма с валидацией email/пароля/подтверждения, отправка POST /api/auth/register.
+ * Пароли должны совпадать, минимум 6 символов.
+ *
+ * @module views/Register
+ */
+
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext'
@@ -295,9 +311,19 @@ const handleRegister = async () => {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  75% {
+    transform: translateX(5px);
+  }
 }
 </style>
 

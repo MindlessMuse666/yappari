@@ -1,3 +1,11 @@
+<!--
+  Компонент индикатора статуса TTS.
+
+  Отображает доступность японских и русских голосов.
+  Поддерживает компактный режим (строка в хедере) и
+  детальный режим (панель с информацией и прогресс-баром).
+-->
+
 <template>
   <div class="tts-status" :class="{ compact }">
     <!-- Компактный режим: строка с индикаторами -->
@@ -31,21 +39,13 @@
 
         <!-- Progress bar загрузки Python TTS -->
         <div v-if="pythonInstalling" class="tts-python-progress">
-          <ProgressBar
-            v-if="pythonProgress"
-            :value="Math.round((pythonProgress.ja + pythonProgress.ru) / 2)"
-            :show-value="true"
-            class="tts-progress-bar"
-          />
+          <ProgressBar v-if="pythonProgress" :value="Math.round((pythonProgress.ja + pythonProgress.ru) / 2)"
+            :show-value="true" class="tts-progress-bar" />
           <p class="tts-progress-label">Установка высококачественного TTS…</p>
         </div>
 
         <!-- Кнопка установки (если голос не найден) -->
-        <button
-          v-if="showInstallBtn"
-          class="tts-install-btn"
-          @click="$emit('install')"
-        >
+        <button v-if="showInstallBtn" class="tts-install-btn" @click="$emit('install')">
           Установить высококачественный TTS
         </button>
       </div>
@@ -54,6 +54,15 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Индикатор статуса TTS-голосов.
+ *
+ * Показывает готовность японских и русских голосов Web Speech API.
+ * В компактном режиме — строка с индикаторами, в детальном — панель.
+ *
+ * @module components/TtsStatus
+ */
+
 import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
 import type { TtsVoiceState } from '../composables/useTts'
@@ -166,8 +175,15 @@ const voiceClass = (state: TtsVoiceState): string => {
 }
 
 @keyframes ttsPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* ===== Панель (детальный режим) ===== */
@@ -216,6 +232,7 @@ const voiceClass = (state: TtsVoiceState): string => {
   background: #6bcb77;
   box-shadow: 0 0 6px rgba(107, 203, 119, 0.5);
 }
+
 .tts-state-ready {
   color: #6bcb77;
   background: rgba(107, 203, 119, 0.1);
@@ -226,6 +243,7 @@ const voiceClass = (state: TtsVoiceState): string => {
   background: #c7cdd8;
   animation: ttsPulse 1.5s ease-in-out infinite;
 }
+
 .tts-state-checking,
 .tts-state-loading {
   color: #c7cdd8;
@@ -235,6 +253,7 @@ const voiceClass = (state: TtsVoiceState): string => {
 .tts-state-not_found .tts-dot {
   background: #e8904a;
 }
+
 .tts-state-not_found {
   color: #e8904a;
   background: rgba(232, 144, 74, 0.1);
@@ -243,6 +262,7 @@ const voiceClass = (state: TtsVoiceState): string => {
 .tts-state-error .tts-dot {
   background: #d62828;
 }
+
 .tts-state-error {
   color: #d62828;
   background: rgba(214, 40, 40, 0.1);

@@ -1,3 +1,11 @@
+<!--
+  Страница входа в систему.
+
+  Форма с валидацией email и пароля. При успешном входе
+  перенаправляет на главную страницу. Содержит ссылку
+  на регистрацию.
+-->
+
 <template>
   <div class="auth-page">
     <div class="auth-card">
@@ -10,23 +18,23 @@
       <form @submit.prevent="handleLogin" class="auth-form" :class="{ shake: shake }" novalidate>
         <div class="input-group">
           <label for="email">Email</label>
-          <InputText id="email" v-model="email" type="email" placeholder="Введите ваш email"
-            class="custom-input" :class="{ 'input-error': errors.email }"
-            autocomplete="email"
-            @blur="onBlur('email')" @input="clearError('email')" />
+          <InputText id="email" v-model="email" type="email" placeholder="Введите ваш email" class="custom-input"
+            :class="{ 'input-error': errors.email }" autocomplete="email" @blur="onBlur('email')"
+            @input="clearError('email')" />
           <div v-if="errors.email" class="field-error">{{ errors.email }}</div>
         </div>
 
         <div class="input-group">
           <label for="password">Пароль</label>
-          <InputText id="password" v-model="password" type="password" placeholder="Введите пароль"
-            class="custom-input" :class="{ 'input-error': errors.password }"
-            autocomplete="current-password"
-            @blur="onBlur('password')" @input="clearError('password')" />
+          <InputText id="password" v-model="password" type="password" placeholder="Введите пароль" class="custom-input"
+            :class="{ 'input-error': errors.password }" autocomplete="current-password" @blur="onBlur('password')"
+            @input="clearError('password')" />
           <div v-if="errors.password" class="field-error">{{ errors.password }}</div>
         </div>
 
-        <div class="submit-error-space"><div v-if="submitError" class="submit-error">{{ submitError }}</div></div>
+        <div class="submit-error-space">
+          <div v-if="submitError" class="submit-error">{{ submitError }}</div>
+        </div>
 
         <Button label="Войти" type="submit" class="primary-btn auth-btn" :loading="loading" />
       </form>
@@ -40,6 +48,15 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Страница входа в систему.
+ *
+ * Форма с валидацией email/пароля, отправка POST /api/auth/login.
+ * При ошибке сервера — выводит сообщение в блоке submit-error.
+ *
+ * @module views/Login
+ */
+
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import InputText from 'primevue/inputtext'
@@ -272,9 +289,19 @@ const handleLogin = async () => {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  75% {
+    transform: translateX(5px);
+  }
 }
 </style>
 

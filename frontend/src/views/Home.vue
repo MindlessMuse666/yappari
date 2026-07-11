@@ -15,16 +15,19 @@
       <div class="profile-section" @mouseenter="showProfilePopover" @mouseleave="hideProfilePopover">
         <Transition name="profile-icon">
           <div v-if="!showProfile" key="icon" class="profile-trigger">
-            <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
           </div>
         </Transition>
         <Transition name="profile-expand">
-          <div v-if="showProfile" key="popover" class="profile-popover" @mouseenter="cancelProfileTimer" @mouseleave="hideProfilePopover">
+          <div v-if="showProfile" key="popover" class="profile-popover" @mouseenter="cancelProfileTimer"
+            @mouseleave="hideProfilePopover">
             <div class="popover-header">
-              <svg class="popover-avatar" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg class="popover-avatar" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
@@ -35,7 +38,8 @@
             </div>
             <div class="popover-divider"></div>
             <button @click="handleLogout" class="popover-logout-btn">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
@@ -483,7 +487,10 @@ watch(selectedDeckIds, (newVal) => {
   -ms-overflow-style: none;
   padding: 0.5rem 0.25rem 0.5rem 0;
 }
-.deck-list::-webkit-scrollbar { display: none; }
+
+.deck-list::-webkit-scrollbar {
+  display: none;
+}
 
 .deck-item {
   display: flex;
@@ -625,6 +632,7 @@ watch(selectedDeckIds, (newVal) => {
 .profile-icon-leave-active {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .profile-icon-leave-to {
   opacity: 0;
   transform: scale(0.5);
@@ -634,6 +642,7 @@ watch(selectedDeckIds, (newVal) => {
 .profile-icon-enter-active {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .profile-icon-enter-from {
   opacity: 0;
   transform: scale(0.5);
@@ -643,6 +652,7 @@ watch(selectedDeckIds, (newVal) => {
 .profile-expand-enter-active {
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
 .profile-expand-enter-from {
   opacity: 0;
   transform: scale(0.3);
@@ -653,6 +663,7 @@ watch(selectedDeckIds, (newVal) => {
 .profile-expand-leave-active {
   transition: all 0.15s ease;
 }
+
 .profile-expand-leave-to {
   opacity: 0;
   transform: scale(0.5);
@@ -807,20 +818,20 @@ watch(selectedDeckIds, (newVal) => {
   cursor: not-allowed;
 }
 
-.training-btn:disabled ~ .corner-trigger {
+.training-btn:disabled~.corner-trigger {
   pointer-events: none;
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.training-btn:disabled ~ .corner-trigger:hover {
+.training-btn:disabled~.corner-trigger:hover {
   background: #1a1a1a;
   border-color: #333333;
   transform: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.training-btn:disabled ~ .corner-trigger:hover .corner-fold {
+.training-btn:disabled~.corner-trigger:hover .corner-fold {
   color: rgba(255, 255, 255, 0.45);
 }
 

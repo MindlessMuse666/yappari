@@ -35,17 +35,20 @@
           <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
             <div class="card-inner">
               <div class="card-front">
-                <div class="text" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">{{ currentCard.KanjiText }}</div>
+                <div class="text" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">{{
+                  currentCard.KanjiText }}</div>
               </div>
               <div class="card-back">
                 <div class="word-section">
-                  <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">
+                  <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }"
+                    @click="speakJapaneseOnly">
                     <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
                   </div>
                 </div>
                 <div class="separator"></div>
                 <div class="translation-section">
-                  <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakRussianOnly">{{ currentCard.Translation }}</div>
+                  <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }"
+                    @click="speakRussianOnly">{{ currentCard.Translation }}</div>
                 </div>
               </div>
             </div>
@@ -542,10 +545,13 @@ onUnmounted(() => {
 }
 
 @keyframes loadingGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     border-color: #222222;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   }
+
   50% {
     border-color: #333333;
     box-shadow: 0 10px 40px rgba(255, 10, 20, 0.08), 0 0 60px rgba(255, 10, 20, 0.04);
@@ -583,10 +589,13 @@ onUnmounted(() => {
 }
 
 @keyframes dotPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
+
   50% {
     opacity: 1;
     transform: scale(1);
@@ -665,13 +674,16 @@ onUnmounted(() => {
 .card-switch-enter-active {
   transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
 .card-switch-leave-active {
   transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
 .card-switch-enter-from {
   opacity: 0;
   transform: translateY(40px) scale(0.96);
 }
+
 .card-switch-leave-to {
   opacity: 0;
   transform: translateY(-30px) scale(0.96);

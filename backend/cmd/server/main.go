@@ -10,6 +10,8 @@ import (
 	"github.com/MindlessMuse666/yappari/backend/handlers"
 )
 
+// main точка входа: инициализирует БД, настраивает Gin-сервер
+// с CORS и маршрутизацией API, а также раздаёт статику фронтенда.
 func main() {
 	// Инициализация БД
 	dbPath := os.Getenv("DATABASE_PATH")
@@ -86,6 +88,7 @@ func main() {
 	}
 }
 
+// corsMiddleware добавляет CORS-заголовки для dev-режима (Vite на localhost:5173).
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
