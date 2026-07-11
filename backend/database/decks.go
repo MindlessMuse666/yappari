@@ -13,7 +13,7 @@ func GetDecks() ([]Deck, error) {
 	}
 	defer rows.Close()
 
-	var decks []Deck
+	decks := make([]Deck, 0)
 	for rows.Next() {
 		var d Deck
 		if err := rows.Scan(&d.ID, &d.Name, &d.CreatedAt); err != nil {

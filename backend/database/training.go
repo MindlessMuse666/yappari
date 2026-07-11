@@ -44,7 +44,7 @@ func GetTrainingCards(mode string, deckIDs []int) ([]TrainingCard, error) {
 	}
 	defer rows.Close()
 
-	var cards []TrainingCard
+	cards := make([]TrainingCard, 0)
 	for rows.Next() {
 		var c TrainingCard
 		if err := rows.Scan(&c.ID, &c.KanjiText, &c.FuriganaText, &c.Translation); err != nil {

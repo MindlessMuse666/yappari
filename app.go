@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -27,7 +28,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	if err := database.InitDB(); err != nil {
-		panic(err)
+		log.Fatalf("Критическая ошибка: не удалось инициализировать базу данных: %v", err)
 	}
 
 	// Инициализируем TTS (создаёт venv, загружает модели, запускает Python-сервер)
@@ -59,12 +60,20 @@ func (a *App) shutdown(ctx context.Context) {
 
 // GetDecks возвращает список всех колод.
 func (a *App) GetDecks() ([]database.Deck, error) {
-	return database.GetDecks()
+	decks, err := database.GetDecks()
+	if err != nil {
+		fmt.Printf("ERROR: GetDecks failed: %v\n", err)
+	}
+	return decks, err
 }
 
 // CreateDeck создаёт новую колоду с указанным именем.
 func (a *App) CreateDeck(name string) (*database.Deck, error) {
-	return database.CreateDeck(name)
+	deck, err := database.CreateDeck(name)
+	if err != nil {
+		fmt.Printf("ERROR: CreateDeck failed: %v\n", err)
+	}
+	return deck, err
 }
 
 // UpdateDeck обновляет название колоды.
@@ -81,12 +90,20 @@ func (a *App) DeleteDeck(id int) error {
 
 // GetCardsByDeck возвращает все карточки указанной колоды.
 func (a *App) GetCardsByDeck(deckID int) ([]database.Card, error) {
-	return database.GetCardsByDeck(deckID)
+	cards, err := database.GetCardsByDeck(deckID)
+	if err != nil {
+		fmt.Printf("ERROR: GetCardsByDeck failed: %v\n", err)
+	}
+	return cards, err
 }
 
 // CreateCard создаёт новую карточку с указанными данными.
 func (a *App) CreateCard(input database.CardInput) (*database.Card, error) {
-	return database.CreateCard(input)
+	card, err := database.CreateCard(input)
+	if err != nil {
+		fmt.Printf("ERROR: CreateCard failed: %v\n", err)
+	}
+	return card, err
 }
 
 // UpdateCard обновляет текстовые поля карточки.

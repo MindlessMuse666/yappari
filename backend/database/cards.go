@@ -21,7 +21,7 @@ func GetCardsByDeck(deckID int) ([]Card, error) {
 	}
 	defer rows.Close()
 
-	var cards []Card
+	cards := make([]Card, 0)
 	for rows.Next() {
 		var c Card
 		err := rows.Scan(

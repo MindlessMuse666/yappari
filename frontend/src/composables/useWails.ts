@@ -14,10 +14,11 @@
 import type { Deck, Card, CardInput, TrainingCard } from '../types'
 
 /**
- * Флаг: запущены ли мы в среде Wails.
- * Определяется по наличию глобального объекта `window.go.main.App`.
+ * Флаг: запущены ли мы в среде Wails с реальным IPC.
+ * В dev-режиме всегда false — используются моки для ускорения итераций.
+ * В production определяется по наличию `window.go.main.App` ( Bind в main.go).
  */
-const isWails = typeof window !== 'undefined' && window.go?.main?.App != null
+const isWails = !import.meta.env.DEV && typeof window !== 'undefined' && window.go?.main?.App != null
 
 /**
  * Загружает мок-данные колод для разработки.
