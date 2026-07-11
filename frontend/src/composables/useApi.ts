@@ -160,9 +160,9 @@ export function useApi() {
     return apiFetch<Card>(`/api/decks/${input.DeckID}/cards`, {
       method: 'POST',
       body: JSON.stringify({
-        kanji_text: input.KanjiText,
-        furigana_text: input.FuriganaText,
-        translation: input.Translation,
+        KanjiText: input.KanjiText,
+        FuriganaText: input.FuriganaText,
+        Translation: input.Translation,
       }),
     })
   }

@@ -61,26 +61,32 @@
       </button>
     </div>
 
-    <div v-if="decks.length === 0" class="empty-state" @click="createDeckModalVisible = true">
-      <div class="empty-state-icon">
-        <span class="empty-plus">+</span>
-      </div>
-      <h2 class="empty-state-title">У тебя пока нет колод.</h2>
-      <p class="empty-state-subtitle">Создай первую!</p>
+    <!-- Состояние загрузки (показывается пока грузятся колоды с сервера) -->
+    <div v-if="isInitialLoading" class="loading-state">
+      <div class="skeleton-deck" v-for="i in 4" :key="i"></div>
     </div>
 
-    <div v-else class="deck-list">
-      <div v-for="deck in decks" :key="deck.ID" class="deck-item">
-        <label class="deck-checkbox-wrapper" :for="`deck-${deck.ID}`">
-          <input type="checkbox" :id="`deck-${deck.ID}`" v-model="selectedDeckIds" :value="deck.ID" />
-          <span class="deck-name">{{ deck.Name }}</span>
-        </label>
-        <button @click.stop="goToDeck(deck.ID)" class="gear-btn" title="Управлять колодой">
-          ⚙️
-        </button>
+    <template v-else>
+      <div v-if="decks.length === 0" class="empty-state" @click="createDeckModalVisible = true">
+        <div class="empty-state-icon">
+          <span class="empty-plus">+</span>
+        </div>
+        <h2 class="empty-state-title">У тебя пока нет колод.</h2>
+        <p class="empty-state-subtitle">Создай первую!</p>
       </div>
-    </div>
 
+      <div v-else class="deck-list">
+        <div v-for="deck in decks" :key="deck.ID" class="deck-item" @click="toggleDeckSelection(deck.ID)">
+          <div class="deck-checkbox-wrapper" @click.stop="toggleDeckSelection(deck.ID)">
+            <input type="checkbox" :checked="selectedDeckIds.includes(deck.ID)" />
+            <span class="deck-name">{{ deck.Name }}</span>
+          </div>
+          <button @click.stop="goToDeck(deck.ID)" class="gear-btn" title="Управлять колодой">⚙️</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Кнопки тренировки — всегда внизу -->
     <div v-if="decks.length > 0" class="training-buttons">
       <!-- Кнопка: Интервальное повторение -->
       <div class="training-btn-wrapper">
@@ -134,7 +140,7 @@
             Название колоды <span class="required-asterisk">*</span>
           </label>
           <InputText id="deck-name" v-model="newDeckName" placeholder="Введите название колоды" class="custom-input"
-            :class="{ 'input-error': errors.deckName }" @keyup.enter="createDeck" />
+            :class="{ 'input-error': errors.deckName }" @keydown.enter="onDeckNameEnter" />
           <div v-if="errors.deckName" class="error">{{ errors.deckName }}</div>
         </div>
       </div>
@@ -174,6 +180,7 @@ const selectedDeckIds = ref<number[]>([])
 const createDeckModalVisible = ref(false)
 const newDeckName = ref('')
 const isLoading = ref(false)
+const isInitialLoading = ref(true)
 const errors = ref({ deckName: '' })
 const shake = ref(false)
 const activePopover = ref<string | null>(null)
@@ -197,6 +204,7 @@ const loadDecks = async () => {
     await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоды: ' + e, isError: true })
   } finally {
     isLoading.value = false
+    isInitialLoading.value = false
   }
 }
 
@@ -220,6 +228,12 @@ const validateForm = (): boolean => {
 const triggerShake = () => {
   shake.value = true
   setTimeout(() => { shake.value = false }, 500)
+}
+
+/** Обработчик Enter на поле ввода с защитой от IME-композиции (японский ввод) */
+const onDeckNameEnter = (e: KeyboardEvent) => {
+  if (e.isComposing || e.keyCode === 229) return
+  createDeck()
 }
 
 /** Создаёт новую колоду */
@@ -268,6 +282,16 @@ const startTraining = (mode: string) => {
   })
 }
 
+/** Переключает выбор колоды при клике на карточку */
+const toggleDeckSelection = (id: number) => {
+  const idx = selectedDeckIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedDeckIds.value.splice(idx, 1)
+  } else {
+    selectedDeckIds.value.push(id)
+  }
+}
+
 /** Выделить / снять выделение со всех колод */
 const toggleSelectAll = () => {
   playClickSound()
@@ -278,11 +302,18 @@ const toggleSelectAll = () => {
   }
 }
 
-/** N — открыть модалку создания колоды */
+/** N — открыть модалку создания колоды, A — выбрать все */
 const onKeydown = (e: KeyboardEvent) => {
-  // Игнорируем хоткеи при вводе в текстовые поля
+  // Игнорируем события во время ввода японского текста (IME composition)
+  if (e.isComposing || e.keyCode === 229) return
+
   const target = e.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+  // Игнорируем хоткеи при вводе в текстовые поля
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    const input = target as HTMLInputElement
+    // Разрешаем хоткеи на чекбоксах (после клика фокус остаётся на чекбоксе)
+    if (input.type !== 'checkbox' && input.type !== 'radio') return
+  }
 
   if (e.code === 'KeyN' && !createDeckModalVisible.value) {
     e.preventDefault()
@@ -383,6 +414,28 @@ watch(selectedDeckIds, (newVal) => {
   position: relative;
 }
 
+/* ===== Loading skeleton ===== */
+.loading-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton-deck {
+  height: 58px;
+  background: #111111;
+  border: 1px solid #222222;
+  border-radius: 0.75rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -474,22 +527,25 @@ watch(selectedDeckIds, (newVal) => {
 }
 
 .deck-list {
-  margin: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  flex: 1;
+  padding: 0.5rem 0.25rem 1rem 0;
   overflow-y: auto;
   min-height: 0;
-  position: relative;
-  z-index: 1;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 0.5rem 0.25rem 0.5rem 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
 }
 
 .deck-list::-webkit-scrollbar {
-  display: none;
+  width: 6px;
+}
+
+.deck-list::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
 }
 
 .deck-item {
@@ -500,8 +556,8 @@ watch(selectedDeckIds, (newVal) => {
   background-color: #111111;
   border: 1px solid #222222;
   border-radius: 0.75rem;
-  transition: all 0.2s;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .deck-item:hover {
@@ -588,9 +644,13 @@ watch(selectedDeckIds, (newVal) => {
   z-index: 1;
 }
 
+.actions .primary-btn:first-child {
+  min-width: 195px;
+}
+
 .select-all-btn {
   margin-left: auto;
-  min-width: 185px;
+  width: 215px;
 }
 
 /* ===== Профиль ===== */
@@ -783,9 +843,7 @@ watch(selectedDeckIds, (newVal) => {
   gap: 1rem;
   flex-wrap: wrap;
   flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-  padding-top: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 .training-btn-wrapper {
