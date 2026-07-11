@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/MindlessMuse666/yappari/backend/database"
 	"github.com/MindlessMuse666/yappari/backend/tts"
@@ -24,25 +22,15 @@ func NewApp() *App {
 	return &App{}
 }
 
-// startup вызывается Wails при запуске приложения. Инициализирует базу данных и TTS.
+// startup вызывается Wails при запуске приложения. Инициализирует базу данных.
+// TTS (Python) больше не инициализируется автоматически — используется Web Speech API
+// через WebView2. Python TTS (Kokoro/Silero) будет установлен по запросу пользователя
+// через Settings → "Установить высококачественный TTS".
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	if err := database.InitDB(); err != nil {
 		log.Fatalf("Критическая ошибка: не удалось инициализировать базу данных: %v", err)
 	}
-
-	// Инициализируем TTS (создаёт venv, загружает модели, запускает Python-сервер)
-	go func() {
-		appData, err := os.UserConfigDir()
-		if err != nil {
-			fmt.Printf("TTS: не удалось получить папку пользователя: %v\n", err)
-			return
-		}
-		appDataDir := filepath.Join(appData, "Yappari")
-		if err := tts.Init(appDataDir); err != nil {
-			fmt.Printf("TTS: ошибка инициализации: %v\n", err)
-		}
-	}()
 }
 
 // shutdown вызывается Wails при завершении приложения.

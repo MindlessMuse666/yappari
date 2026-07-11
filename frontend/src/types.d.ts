@@ -50,6 +50,13 @@ export interface TrainingCard {
 export interface VoiceStatus {
   Ja: boolean
   Ru: boolean
+  /** Какой бэкенд используется для синтеза */
+  backend?: 'webspeech' | 'python' | 'google' | 'none'
+  /** Прогресс загрузки модели (0-100), только для Python TTS */
+  loadingProgress?: {
+    ja: number
+    ru: number
+  }
 }
 
 /** Тип expose-методов компонента CustomAlert */

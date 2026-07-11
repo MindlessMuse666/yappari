@@ -6,13 +6,11 @@
       </button>
       <h1>{{ modeLabel }}</h1>
       <div class="header-right">
+        <TtsStatus :compact="true" :voices="ttsVoiceStatus" />
         <span class="progress-text">{{ currentIndex }} / {{ cards.length }}</span>
       </div>
     </div>
 
-    <div v-if="isWails && !ttsAvailable" class="tts-warning">
-      Озвучка отключена — не настроено TTS-окружение
-    </div>
     <ProgressBar v-if="!isLoading" :value="progress" :show-value="false" class="progress-bar" />
 
     <!-- Экран загрузки/перехода -->
@@ -131,8 +129,9 @@ import FuriganaText from '../components/FuriganaText.vue'
 import type { TrainingCard as TrainingCardType } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
-import { speakBoth, speakJapanese, speakRussian, checkTTSAvailability, isTtsUnavailableShown, markTtsUnavailableShown } from '../composables/useTts'
+import { speakBoth, speakJapanese, speakRussian, checkTTSAvailability, getTtsStatus } from '../composables/useTts'
 import { playClickSound } from '../composables/useSound'
+import TtsStatus from '../components/TtsStatus.vue'
 import { triggerConfetti } from '../utils/confetti'
 
 const router = useRouter()
@@ -175,8 +174,9 @@ const progress = computed(() => {
 
 /** Флаг: доступен ли TTS — влияет на кнопки озвучки */
 const ttsAvailable = ref(true)
-/** Таймер опроса готовности TTS */
-let ttsPollTimer: ReturnType<typeof setInterval> | null = null
+
+/** Реактивный статус TTS для отображения в TtsStatus */
+const ttsVoiceStatus = getTtsStatus()
 
 /** Флаг: включён ли авто-режим (только свободный режим) */
 const isAutoPlaying = ref(false)
@@ -433,64 +433,21 @@ onMounted(async () => {
 
   await loadCards()
 
-  // Проверяем доступность TTS в Wails-режиме
-  if (isWails) {
-    try {
-      const ttsStatus = await checkTTSAvailability()
-      ttsAvailable.value = ttsStatus.available
-      if (!ttsStatus.available) {
-        if (ttsStatus.status === 1 && !isTtsUnavailableShown()) { // StatusInitializing
-          markTtsUnavailableShown()
-          await alert({
-            title: 'Озвучка настраивается',
-            message:
-              'Python-окружение для озвучки устанавливается. '
-              + ttsStatus.message
-              + '\n\nЭто может занять несколько минут при первом запуске. '
-              + 'Озвучка станет доступна автоматически.',
-          })
-          startPollingTTS()
-        } else if (ttsStatus.status !== 1) {
-          // Остальные состояния — просто логируем, banner покажет подсказку
-          console.warn('TTS недоступен:', ttsStatus.message)
-        }
-      }
-    } catch {
-      // игнорируем ошибку проверки
+  // Проверяем доступность TTS
+  try {
+    const ttsStatus = await checkTTSAvailability()
+    ttsAvailable.value = ttsStatus.available
+    if (!ttsStatus.available) {
+      console.warn('TTS недоступен:', ttsStatus.message)
     }
+  } catch {
+    // игнорируем ошибку проверки
   }
 })
-
-/** Запускает опрос готовности TTS */
-const startPollingTTS = () => {
-  ttsPollTimer = setInterval(async () => {
-    try {
-      const status = await checkTTSAvailability()
-      if (status.available) {
-        ttsAvailable.value = true
-        if (ttsPollTimer) {
-          clearInterval(ttsPollTimer)
-          ttsPollTimer = null
-        }
-      }
-    } catch {
-      // игнорируем ошибку
-    }
-  }, 5000)
-}
-
-/** Останавливает опрос готовности TTS */
-const stopPollingTTS = () => {
-  if (ttsPollTimer) {
-    clearInterval(ttsPollTimer)
-    ttsPollTimer = null
-  }
-}
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
   stopAutoPlay()
-  stopPollingTTS()
   if (successSound.value) {
     successSound.value.pause()
     successSound.value.currentTime = 0
@@ -994,20 +951,6 @@ onUnmounted(() => {
   line-height: 1.6;
   vertical-align: middle;
   text-transform: uppercase;
-}
-
-.tts-warning {
-  background: #1a1a1a;
-  border: 1px solid #333333;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  margin-bottom: 1rem;
-  text-align: center;
-  font-size: 0.85rem;
-  color: #c7cdd8;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .go-home-btn {

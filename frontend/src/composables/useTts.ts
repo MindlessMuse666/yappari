@@ -1,35 +1,31 @@
 /**
  * Композабл для синтеза речи (Text-To-Speech).
  *
- * Предоставляет единый интерфейс озвучки текста на японском и русском языках.
- * В режиме Wails: вызывает Go-бэкенд (Silero / Kokoro TTS).
- * В режиме разработки: использует Web Speech API с запасными вариантами.
+ * Стратегия выбора бэкенда (в порядке приоритета):
+ * 1. Web Speech API — встроен в WebView2/браузер, zero-install, работает офлайн
+ * 2. Go IPC (Wails → Python TTS) — только если Web Speech не нашёл голоса для языка
+ * 3. Google Translate TTS — онлайн-резерв для браузерной версии
  *
  * @module composables/useTts
  */
 
-import { useAlert } from './useAlert'
+import { ref, type Ref } from 'vue'
+import { getCachedAudio, setCachedAudio } from './useTtsCache'
+
+/** Состояние TTS для одного языка */
+export type TtsVoiceState = 'checking' | 'ready' | 'not_found' | 'loading' | 'error'
+
+/** Статус TTS для обоих языков */
+export interface TtsStatus {
+  ja: TtsVoiceState
+  ru: TtsVoiceState
+}
 
 /**
  * Флаг: запущены ли мы в среде Wails.
  * Определяется по наличию глобального объекта `window.go.main.App`.
  */
 const isWails = typeof window !== 'undefined' && window.go?.main?.App != null
-
-/**
- * Флаги: показывались ли уже TTS-ошибки (показываем только один раз за сессию).
- */
-let ttsUnavailableShown = false
-let ttsErrorShown = false
-
-/** Проверяет, показывалось ли уже уведомление о недоступности TTS */
-export const isTtsUnavailableShown = () => ttsUnavailableShown
-
-/** Отмечает, что уведомление о недоступности TTS было показано */
-export const markTtsUnavailableShown = () => { ttsUnavailableShown = true }
-
-/** Проверяет, показывалась ли уже ошибка озвучки */
-export const isTtsErrorShown = () => ttsErrorShown
 
 /**
  * Загружает список доступных голосов Web Speech API.
@@ -71,10 +67,7 @@ const findVoice = (voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesi
 }
 
 /**
- * Произносит текст системным голосом по умолчанию (без указания конкретного).
- *
- * @param text - текст для озвучки
- * @param lang - код языка
+ * Произносит текст через Web Speech API системным голосом по умолчанию.
  */
 const speakWithDefaultVoice = (text: string, lang: string): Promise<void> => {
   return new Promise((resolve) => {
@@ -144,45 +137,13 @@ const speakWithGoogleTTS = async (text: string, lang: string): Promise<string> =
 }
 
 /**
- * Проверяет доступность голосов через Web Speech API.
+ * Пытается воспроизвести текст через Web Speech API.
  *
- * @returns объект с флагами доступности японского и русского голосов
+ * @returns true если успешно, false если голос не найден
  */
-export const checkVoicesAvailability = async (): Promise<{ Ja: boolean; Ru: boolean }> => {
-  if (isWails) {
-    return window.go!.main.App.CheckVoicesAvailability()
-  }
-  const voices = await loadVoices()
-  const jaVoice = voices.some(v => v.lang.startsWith('ja'))
-  const ruVoice = voices.some(v => v.lang.startsWith('ru'))
-  return { Ja: jaVoice, Ru: ruVoice }
-}
-
-/**
- * Произносит указанный текст через TTS-движок (Wails) или Web Speech API.
- *
- * В режиме Wails возвращает объект { audio, mime } от бэкенда:
- * - Silero TTS (русский): mime = "audio/wav"
- * - Kokoro TTS (японский): mime = "audio/wav"
- *
- * В режиме разработки воспроизводит через Web Speech API / Google TTS
- * и возвращает пустой объект (аудио уже сыграно).
- *
- * @param text - текст для озвучки
- * @param lang - код языка (например, `ja-JP`, `ru-RU`)
- * @returns объект с base64 аудио и MIME-типом
- */
-export const speakText = async (text: string, lang: string): Promise<{ audio: string; mime: string }> => {
-  if (isWails) {
-    return window.go!.main.App.SpeakText(text, lang)
-  }
-
-  // Режим разработки: Web Speech API + Google TTS fallback
+const tryWebSpeech = async (text: string, lang: string): Promise<boolean> => {
   try {
-    if (!window.speechSynthesis) {
-      console.warn('Web Speech API недоступен')
-      return { audio: '', mime: '' }
-    }
+    if (!window.speechSynthesis) return false
 
     window.speechSynthesis.cancel()
 
@@ -190,42 +151,145 @@ export const speakText = async (text: string, lang: string): Promise<{ audio: st
     const voice = findVoice(voices, lang)
 
     if (voice) {
-      return new Promise<{ audio: string; mime: string }>((resolve) => {
+      return new Promise<boolean>((resolve) => {
         const utterance = new SpeechSynthesisUtterance(text)
         utterance.lang = lang
         utterance.rate = 0.9
         utterance.voice = voice
-        utterance.onend = () => resolve({ audio: '', mime: '' })
-        utterance.onerror = () => resolve({ audio: '', mime: '' })
+        utterance.onend = () => resolve(true)
+        utterance.onerror = () => resolve(false)
         window.speechSynthesis.speak(utterance)
       })
     }
 
-    console.warn(`Голос для языка ${lang} не найден. Пробуем запасные способы...`)
-
-    // Запасной: Google TTS
-    const ok = await speakWithGoogleTTS(text, lang)
-    if (ok) return { audio: '', mime: '' }
-
-    // Запасной: Web Speech API без голоса
+    // Голос не найден — попробуем без указания голоса
     await speakWithDefaultVoice(text, lang)
-    return { audio: '', mime: '' }
+    return false
   } catch (e) {
-    console.error(`speakText: критическая ошибка для ${lang}:`, e)
-    return { audio: '', mime: '' }
+    console.warn(`tryWebSpeech: ошибка для ${lang}:`, e)
+    return false
   }
+}
+
+/**
+ * Проверяет доступность голосов через Web Speech API.
+ *
+ * @returns объект с флагами доступности японского и русского голосов
+ */
+export const checkVoicesAvailability = async (): Promise<{ Ja: boolean; Ru: boolean }> => {
+  try {
+    const voices = await loadVoices()
+    const jaVoice = voices.some(v => v.lang.startsWith('ja'))
+    const ruVoice = voices.some(v => v.lang.startsWith('ru'))
+
+    // Если хотя бы один голос найден через Web Speech — возвращаем результат
+    if (jaVoice || ruVoice) return { Ja: jaVoice, Ru: ruVoice }
+  } catch {
+    // Если Web Speech недоступен — пробуем Go IPC
+  }
+
+  // Fallback: Go IPC (Wails) или заглушка
+  if (isWails) {
+    try {
+      return await window.go!.main.App.CheckVoicesAvailability()
+    } catch {
+      // Go IPC тоже недоступен
+    }
+  }
+
+  return { Ja: false, Ru: false }
 }
 
 /**
  * Проверяет доступность TTS в системе.
  *
- * @returns объект с флагом `available`, сообщением и статусом (0-3: uninit, loading, ready, error)
+ * Сначала проверяет Web Speech API (встроенные голоса ОС).
+ * Если голоса не найдены — пробует Go IPC (Python TTS).
+ *
+ * @returns объект с флагом `available`, сообщением и статусом
  */
 export const checkTTSAvailability = async (): Promise<{ available: boolean; message: string; status: number }> => {
-  if (isWails) {
-    return window.go!.main.App.CheckTTSAvailability()
+  // 1. Проверяем Web Speech API
+  try {
+    const voices = await loadVoices()
+    const jaVoice = voices.some(v => v.lang.startsWith('ja'))
+    const ruVoice = voices.some(v => v.lang.startsWith('ru'))
+
+    if (jaVoice || ruVoice) {
+      const langs: string[] = []
+      if (jaVoice) langs.push('японский')
+      if (ruVoice) langs.push('русский')
+      return {
+        available: true,
+        message: `Web Speech: ${langs.join(', ')}`,
+        status: 2, // StateReady
+      }
+    }
+  } catch {
+    // Web Speech недоступен — пробуем Go IPC
   }
-  return { available: false, message: 'Режим разработки (без Wails)', status: 3 }
+
+  // 2. Fallback: Go IPC (Python TTS в Wails)
+  if (isWails) {
+    try {
+      return await window.go!.main.App.CheckTTSAvailability()
+    } catch {
+      // Go IPC недоступен
+    }
+  }
+
+  return { available: false, message: 'TTS-голоса не найдены', status: 3 }
+}
+
+/**
+ * Произносит указанный текст через TTS.
+ *
+ * Стратегия (в порядке приоритета):
+ * 1. Кэш (IndexedDB) — если уже синтезировали через Python TTS
+ * 2. Web Speech API (WebView2 / браузер) — ноль зависимостей
+ * 3. Go IPC (Wails → Python TTS) — если Web Speech не справился
+ * 4. Google Translate TTS — онлайн-резерв
+ *
+ * @param text - текст для озвучки
+ * @param lang - код языка (например, `ja-JP`, `ru-RU`)
+ * @returns объект с base64 аудио и MIME-типом (пустые строки если уже воспроизведено)
+ */
+export const speakText = async (text: string, lang: string): Promise<{ audio: string; mime: string }> => {
+  // 1. Проверяем кэш (синтезированное ранее аудио от Python TTS или Google TTS)
+  try {
+    const cached = await getCachedAudio(text, lang)
+    if (cached) {
+      return { audio: cached.split(',')[1] || '', mime: cached.startsWith('data:audio/wav') ? 'audio/wav' : 'audio/mpeg' }
+    }
+  } catch {
+    // кэш недоступен — игнорируем
+  }
+
+  // 2. Web Speech API — работает в WebView2 (Wails) и в браузере
+  const webSpeechOk = await tryWebSpeech(text, lang)
+  if (webSpeechOk) return { audio: '', mime: '' }
+
+  // 3. Go IPC (Wails → Python TTS) — если Web Speech не нашёл голос
+  if (isWails) {
+    try {
+      const result = await window.go!.main.App.SpeakText(text, lang)
+      // Сохраняем в кэш для будущих повторений
+      if (result.audio && result.mime) {
+        setCachedAudio(text, lang, `data:${result.mime};base64,${result.audio}`, result.mime).catch(() => {})
+      }
+      return result
+    } catch (e) {
+      console.warn(`speakText: Go IPC ошибка для ${lang}:`, e)
+    }
+  }
+
+  // 4. Google Translate TTS — онлайн-резерв (браузер, dev-режим)
+  const googleOk = await speakWithGoogleTTS(text, lang)
+  if (googleOk) return { audio: '', mime: '' }
+
+  // 5. Последний шанс: Web Speech API без голоса
+  await speakWithDefaultVoice(text, lang)
+  return { audio: '', mime: '' }
 }
 
 /**
@@ -254,16 +318,7 @@ export const speakJapanese = async (text: string): Promise<void> => {
     const result = await speakText(text, 'ja-JP')
     await playAudio(result.audio, result.mime)
   } catch (e) {
-    console.error('Ошибка озвучки (ja):', e)
-    if (isWails && !ttsErrorShown) {
-      ttsErrorShown = true
-      const { alert } = useAlert()
-      await alert({
-        title: 'Ошибка озвучки',
-        message: 'Не удалось воспроизвести японскую озвучку. TTS-модели не загружены. Проверьте подключение к интернету при первом запуске.',
-        isError: true,
-      })
-    }
+    console.warn('Ошибка озвучки (ja-JP):', e)
   }
 }
 
@@ -277,16 +332,7 @@ export const speakRussian = async (text: string): Promise<void> => {
     const result = await speakText(text, 'ru-RU')
     await playAudio(result.audio, result.mime)
   } catch (e) {
-    console.error('Ошибка озвучки (ru):', e)
-    if (isWails && !ttsErrorShown) {
-      ttsErrorShown = true
-      const { alert } = useAlert()
-      await alert({
-        title: 'Ошибка озвучки',
-        message: 'Не удалось воспроизвести русскую озвучку. TTS-модели не загружены. Проверьте подключение к интернету при первом запуске.',
-        isError: true,
-      })
-    }
+    console.warn('Ошибка озвучки (ru-RU):', e)
   }
 }
 
@@ -304,15 +350,55 @@ export const speakBoth = async (kanjiText: string, translation: string): Promise
     const ruResult = await speakText(translation, 'ru-RU')
     await playAudio(ruResult.audio, ruResult.mime)
   } catch (e) {
-    console.error('Ошибка озвучки:', e)
-    if (isWails && !ttsErrorShown) {
-      ttsErrorShown = true
-      const { alert } = useAlert()
-      await alert({
-        title: 'Ошибка озвучки',
-        message: 'Не удалось воспроизвести озвучку. TTS-модели не загружены. Проверьте подключение к интернету при первом запуске.',
-        isError: true,
-      })
+    console.warn('Ошибка озвучки:', e)
+  }
+}
+
+/**
+ * Возвращает реактивный статус TTS для каждого языка.
+ *
+ * Обновляется при загрузке голосов Web Speech API (событие onvoiceschanged).
+ * Используется компонентом TtsStatus.vue для отображения состояния.
+ */
+export const getTtsStatus = (): Ref<TtsStatus> => {
+  const status = ref<TtsStatus>({ ja: 'checking', ru: 'checking' })
+
+  const updateStatus = async () => {
+    try {
+      const voices = await loadVoices()
+      const jaVoice = voices.some(v => v.lang.startsWith('ja'))
+      const ruVoice = voices.some(v => v.lang.startsWith('ru'))
+
+      status.value = {
+        ja: jaVoice ? 'ready' : 'not_found',
+        ru: ruVoice ? 'ready' : 'not_found',
+      }
+    } catch {
+      status.value = { ja: 'not_found', ru: 'not_found' }
     }
   }
+
+  // Первичная проверка
+  updateStatus()
+
+  // Слушаем изменения голосов (асинхронная загрузка в Chrome)
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      updateStatus()
+    }
+  }
+
+  return status
+}
+
+/**
+ * Произносит указанный текст с использованием ТОЛЬКО Web Speech API.
+ * Без fallback на Go IPC или Google TTS.
+ * Используется для предпросмотра голоса в настройках.
+ *
+ * @param text - текст для озвучки
+ * @param lang - код языка
+ */
+export const speakWithWebSpeechOnly = async (text: string, lang: string): Promise<boolean> => {
+  return tryWebSpeech(text, lang)
 }
