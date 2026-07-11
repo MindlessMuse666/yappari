@@ -3,6 +3,9 @@ go.work
 *.exe
 *.test
 
+# python
+__pycache__/
+
 # wails
 build/
 wailsjs/

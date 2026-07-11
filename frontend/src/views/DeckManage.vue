@@ -12,12 +12,8 @@
       <button @click="goBack" class="icon-btn" title="Назад">
         <span class="icon">←</span>
       </button>
-      <InputText
-        v-model="deckName"
-        @keyup.enter="updateDeckName"
-        placeholder="Название колоды"
-        class="deck-name-input"
-      />
+      <InputText v-model="deckName" @keyup.enter="updateDeckName" placeholder="Название колоды"
+        class="deck-name-input" />
       <div class="header-actions">
         <button @click="resetDeckProgress" class="secondary-btn" title="Сбросить прогресс">
           Сбросить
@@ -31,7 +27,7 @@
     <div class="add-card">
       <button @click="cardFormModalVisible = true" class="primary-btn">
         <span class="icon">+</span>
-        Добавить карточку
+        Добавить карточку <kbd class="hotkey-hint">Ctrl Q</kbd>
       </button>
     </div>
 
@@ -54,50 +50,28 @@
     </div>
 
     <!-- Модальное окно создания/редактирования карточки -->
-    <Dialog
-      v-model:visible="cardFormModalVisible"
-      :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
-      class="custom-dialog"
-      :closable="false"
-      @show="focusKanjiInput"
-    >
+    <Dialog v-model:visible="cardFormModalVisible" :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
+      class="custom-dialog" :closable="false" @show="focusKanjiInput">
       <div class="form-content" :class="{ shake: shake }">
         <div class="input-group">
           <label for="kanji-text">
             Японское слово <span class="required-asterisk">*</span>
           </label>
-          <InputText
-            id="kanji-text"
-            v-model="cardForm.KanjiText"
-            placeholder="Введите японское слово"
-            class="custom-input"
-            :class="{ 'input-error': errors.kanjiText }"
-            @keyup.enter="saveCard"
-          />
+          <InputText id="kanji-text" v-model="cardForm.KanjiText" placeholder="Введите японское слово"
+            class="custom-input" :class="{ 'input-error': errors.kanjiText }" @keyup.enter="saveCard" />
           <div v-if="errors.kanjiText" class="error">{{ errors.kanjiText }}</div>
         </div>
         <div class="input-group">
           <label for="furigana-text">Чтение (фуригана)</label>
-          <InputText
-            id="furigana-text"
-            v-model="cardForm.FuriganaText"
-            placeholder="Введите чтение"
-            class="custom-input"
-            @keyup.enter="saveCard"
-          />
+          <InputText id="furigana-text" v-model="cardForm.FuriganaText" placeholder="Введите чтение"
+            class="custom-input" @keyup.enter="saveCard" />
         </div>
         <div class="input-group">
           <label for="translation">
             Перевод <span class="required-asterisk">*</span>
           </label>
-          <InputText
-            id="translation"
-            v-model="cardForm.Translation"
-            placeholder="Введите перевод"
-            class="custom-input"
-            :class="{ 'input-error': errors.translation }"
-            @keyup.enter="saveCard"
-          />
+          <InputText id="translation" v-model="cardForm.Translation" placeholder="Введите перевод" class="custom-input"
+            :class="{ 'input-error': errors.translation }" @keyup.enter="saveCard" />
           <div v-if="errors.translation" class="error">{{ errors.translation }}</div>
         </div>
       </div>
@@ -124,6 +98,7 @@ import Button from 'primevue/button'
 import type { Deck, Card, CardInput } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
+import { playClickSound } from '../composables/useSound'
 import FuriganaText from '../components/FuriganaText.vue'
 
 const router = useRouter()
@@ -170,10 +145,23 @@ const loadCards = async () => {
 }
 
 /** Переход на главную */
-const goBack = () => router.push({ name: 'Home' })
+const goBack = () => {
+  playClickSound()
+  router.push({ name: 'Home' })
+}
 
 /** Escape → на главную (если не открыта модалка карточки) */
 const onKeydown = (e: KeyboardEvent) => {
+  // Ctrl/Cmd+Q → новая карточка
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyQ') {
+    e.preventDefault()
+    if (!cardFormModalVisible.value) {
+      cardFormModalVisible.value = true
+      playClickSound()
+    }
+    return
+  }
+
   if (e.key === 'Escape' && !cardFormModalVisible.value) {
     e.preventDefault()
     goBack()
@@ -182,6 +170,7 @@ const onKeydown = (e: KeyboardEvent) => {
 
 /** Сохраняет новое название колоды по Enter */
 const updateDeckName = async () => {
+  playClickSound()
   if (!deckName.value.trim()) return
   try {
     await updateDeck(deckId, deckName.value)
@@ -193,6 +182,7 @@ const updateDeckName = async () => {
 
 /** Сброс прогресса всей колоды (с подтверждением) */
 const resetDeckProgress = async () => {
+  playClickSound()
   const ok = await confirm({
     title: 'Сброс прогресса',
     message: 'Сбросить прогресс всей колоды?',
@@ -211,6 +201,7 @@ const resetDeckProgress = async () => {
 
 /** Удаление колоды (с подтверждением) */
 const deleteDeck = async () => {
+  playClickSound()
   const ok = await confirm({
     title: 'Удаление колоды',
     message: 'Удалить колоду и все карточки? Это действие необратимо.',
@@ -271,6 +262,7 @@ const editCard = (card: Card) => {
 
 /** Удаление карточки (с подтверждением) */
 const deleteCardById = async (id: number) => {
+  playClickSound()
   const ok = await confirm({
     title: 'Удаление карточки',
     message: 'Удалить карточку?',
@@ -289,6 +281,7 @@ const deleteCardById = async (id: number) => {
 
 /** Сохраняет карточку (создаёт или обновляет) */
 const saveCard = async () => {
+  playClickSound()
   if (!validateCardForm()) return
 
   try {
@@ -315,6 +308,7 @@ const saveCard = async () => {
 
 /** Закрывает форму и сбрасывает состояние */
 const closeCardModal = () => {
+  playClickSound()
   cardFormModalVisible.value = false
   editingCard.value = null
   cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
@@ -451,9 +445,19 @@ onUnmounted(() => {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .input-group {
@@ -600,6 +604,25 @@ onUnmounted(() => {
 .danger-btn:hover {
   background-color: #e00912;
   transform: translateY(-2px);
+}
+
+.hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-left: 5px;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+  line-height: 1.6;
+  vertical-align: middle;
+  text-transform: uppercase;
 }
 </style>
 

@@ -13,99 +13,98 @@
     <div v-if="isWails && !ttsAvailable" class="tts-warning">
       Озвучка отключена — не настроено TTS-окружение
     </div>
-    <ProgressBar :value="progress" :show-value="false" class="progress-bar" />
+    <ProgressBar v-if="!isLoading" :value="progress" :show-value="false" class="progress-bar" />
 
-    <div v-if="currentCard && !isFinished" class="card-container">
-      <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
-        <div class="card-inner">
-          <div class="card-front">
-            <div class="text" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">{{ currentCard.KanjiText }}</div>
+    <!-- Экран загрузки/перехода -->
+    <div v-if="isLoading" class="loading-screen">
+      <div class="loading-card">
+        <div class="loading-card-inner">
+          <div class="loading-char">や</div>
+          <div class="loading-dots">
+            <span class="loading-dot"></span>
+            <span class="loading-dot"></span>
+            <span class="loading-dot"></span>
           </div>
-          <div class="card-back">
-            <div class="word-section">
-              <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">
-                <FuriganaText
-                  :KanjiText="currentCard.KanjiText"
-                  :FuriganaText="currentCard.FuriganaText"
-                />
-              </div>
-            </div>
-            <div class="separator"></div>
-            <div class="translation-section">
-              <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakRussianOnly">{{ currentCard.Translation }}</div>
-            </div>
-          </div>
+          <p class="loading-label">Загрузка карточек…</p>
         </div>
       </div>
     </div>
 
-    <div v-if="!isFinished" class="actions">
-      <div class="action-buttons">
-        <template v-if="mode === 'interval'">
-          <button
-            v-if="!showAnswer"
-            @click="showAnswerFn"
-            class="primary-btn large"
-          >
-            Показать ответ
-          </button>
-          <template v-else>
-            <button @click="submitReview(0)" class="grade-btn grade-0">
-              <span class="grade-emoji">😵‍💫</span>
-              <span class="grade-text">Повторить</span>
-            </button>
-            <button @click="submitReview(3)" class="grade-btn grade-3">
-              <span class="grade-emoji">🥺</span>
-              <span class="grade-text">Трудно</span>
-            </button>
-            <button @click="submitReview(4)" class="grade-btn grade-4">
-              <span class="grade-emoji">😊</span>
-              <span class="grade-text">Хорошо</span>
-            </button>
-            <button @click="submitReview(5)" class="grade-btn grade-5">
-              <span class="grade-emoji">😜</span>
-              <span class="grade-text">Легко</span>
-            </button>
-          </template>
-        </template>
-        <template v-else>
-          <button
-            @click="toggleAutoPlay"
-            class="auto-play-btn secondary-btn"
-            :class="{ active: isAutoPlaying }"
-          >
-            {{ isAutoPlaying ? 'Остановить' : 'Авто' }}
-          </button>
-          <template v-if="!isAutoPlaying">
-            <button
-              v-if="!showAnswer"
-              @click="showAnswerFn"
-              class="primary-btn large"
-            >
-              Показать ответ
-            </button>
-            <button
-              v-else
-              @click="nextCard"
-              class="primary-btn large"
-            >
-              Далее
-            </button>
-          </template>
-        </template>
+    <!-- Основной контент (после загрузки) -->
+    <template v-else>
+      <div v-if="currentCard && !isFinished" class="card-container">
+        <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
+          <div class="card-inner">
+            <div class="card-front">
+              <div class="text" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">{{ currentCard.KanjiText }}</div>
+            </div>
+            <div class="card-back">
+              <div class="word-section">
+                <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">
+                  <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
+                </div>
+              </div>
+              <div class="separator"></div>
+              <div class="translation-section">
+                <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakRussianOnly">{{ currentCard.Translation }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div v-if="isFinished" class="finished">
-      <div class="finished-icon">
-        <span class="main-emoji" style="user-select: none;">🎉</span>
+      <div v-if="!isFinished" class="actions">
+        <div class="action-buttons">
+          <template v-if="mode === 'interval'">
+            <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
+              Показать ответ <kbd class="hotkey-hint">Space</kbd>
+            </button>
+            <template v-else>
+              <button @click="submitReview(0)" class="grade-btn grade-0">
+                <span class="grade-emoji">😵‍💫</span>
+                <span class="grade-text">Повторить <kbd class="hotkey-hint">1</kbd></span>
+              </button>
+              <button @click="submitReview(3)" class="grade-btn grade-3">
+                <span class="grade-emoji">🥺</span>
+                <span class="grade-text">Трудно <kbd class="hotkey-hint">2</kbd></span>
+              </button>
+              <button @click="submitReview(4)" class="grade-btn grade-4">
+                <span class="grade-emoji">😊</span>
+                <span class="grade-text">Хорошо <kbd class="hotkey-hint">3</kbd></span>
+              </button>
+              <button @click="submitReview(5)" class="grade-btn grade-5">
+                <span class="grade-emoji">😜</span>
+                <span class="grade-text">Легко <kbd class="hotkey-hint">4</kbd></span>
+              </button>
+            </template>
+          </template>
+          <template v-else>
+            <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
+              {{ isAutoPlaying ? 'Остановить' : 'Авто' }} <kbd class="hotkey-hint">Ctrl W</kbd>
+            </button>
+            <template v-if="!isAutoPlaying">
+              <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
+                Показать ответ <kbd class="hotkey-hint">Space</kbd>
+              </button>
+              <button v-else @click="nextCard" class="primary-btn large">
+                Далее <kbd class="hotkey-hint">Space</kbd>
+              </button>
+            </template>
+          </template>
+        </div>
       </div>
-      <h2>Повторение завершено!</h2>
-      <p>Повторено карточек: {{ cards.length }}</p>
-      <button @click="goBack" class="primary-btn go-home-btn">
-        Вернуться на главную
-      </button>
-    </div>
+
+      <div v-if="isFinished" class="finished">
+        <div class="finished-icon">
+          <span class="main-emoji" style="user-select: none;">🎉</span>
+        </div>
+        <h2>Повторение завершено!</h2>
+        <p>Повторено карточек: {{ cards.length }}</p>
+        <button @click="goBack" class="primary-btn go-home-btn">
+          Вернуться на главную <kbd class="hotkey-hint">Esc</kbd>
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -133,6 +132,7 @@ import type { TrainingCard as TrainingCardType } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
 import { speakBoth, speakJapanese, speakRussian, checkTTSAvailability } from '../composables/useTts'
+import { playClickSound } from '../composables/useSound'
 import { triggerConfetti } from '../utils/confetti'
 
 const router = useRouter()
@@ -183,6 +183,12 @@ const isAutoPlaying = ref(false)
 let lazyTimer: ReturnType<typeof setTimeout> | null = null
 let answerTimer: ReturnType<typeof setTimeout> | null = null
 
+/** Флаг загрузки карточек — пока true, показываем экран перехода */
+const isLoading = ref(true)
+
+/** Звук победы при завершении тренировки */
+const successSound = ref<HTMLAudioElement | null>(null)
+
 /** Загружает карточки с бэкенда */
 const loadCards = async () => {
   try {
@@ -196,24 +202,94 @@ const loadCards = async () => {
       message: 'Не удалось загрузить карточки для тренировки: ' + e,
     })
   }
+
+  // Если карточек нет — уходим на главную (isLoading остаётся true, чтобы не было flash)
+  if (cards.value.length === 0) {
+    router.push({ name: 'Home' })
+    return
+  }
+
+  isLoading.value = false
 }
 
-/** Переход на главную с очисткой таймеров */
+/** Переход на главную с очисткой таймеров и звуков */
 const goBack = () => {
+  playClickSound()
   stopAutoPlay()
+  if (successSound.value) {
+    successSound.value.pause()
+    successSound.value.currentTime = 0
+    successSound.value = null
+  }
   router.push({ name: 'Home' })
 }
 
-/** Escape на главную */
+/**
+ * Обработчик клавиатурных сокращений.
+ *
+ * - Escape → на главную
+ * - Space → показать ответ / далее
+ * - 1-4 → оценки SM-2 (интервальный режим)
+ * - Ctrl/Cmd+A → авто (свободный режим)
+ */
 const onKeydown = (e: KeyboardEvent) => {
+  // Escape — всегда на главную
   if (e.key === 'Escape') {
     e.preventDefault()
     goBack()
+    return
+  }
+
+  // Не обрабатываем хоткеи если тренировка завершена
+  if (isFinished.value) return
+
+  // Space — показать ответ или далее (в свободном режиме)
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault()
+    if (!showAnswer.value) {
+      showAnswerFn()
+    } else if (mode.value === 'free' && !isAutoPlaying.value) {
+      nextCard()
+    }
+    // В interval-режиме при showAnswer Space ничего не делает (ждём цифру)
+    return
+  }
+
+  // Ctrl/Cmd+W — авто (свободный режим)
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyW') {
+    e.preventDefault()
+    if (mode.value === 'free' && !isFinished.value) {
+      toggleAutoPlay()
+    }
+    return
+  }
+
+  // 1-4 — оценки SM-2 (только интервальный режим, после показа ответа)
+  if (showAnswer.value && mode.value === 'interval') {
+    switch (e.key) {
+      case '1':
+        e.preventDefault()
+        submitReview(0)
+        break
+      case '2':
+        e.preventDefault()
+        submitReview(3)
+        break
+      case '3':
+        e.preventDefault()
+        submitReview(4)
+        break
+      case '4':
+        e.preventDefault()
+        submitReview(5)
+        break
+    }
   }
 }
 
 /** Показывает ответ и запускает озвучку (яп + пауза + ру) */
 const showAnswerFn = () => {
+  playClickSound()
   showAnswer.value = true
   if (currentCard.value) {
     speakBoth(currentCard.value.KanjiText, currentCard.value.Translation)
@@ -238,6 +314,7 @@ const speakRussianOnly = () => {
 
 /** Отправляет оценку SM-2 и переходит к следующей карточке */
 const submitReview = async (grade: number) => {
+  playClickSound()
   try {
     if (currentCard.value) {
       await submitReviewWails(currentCard.value.ID, grade)
@@ -254,12 +331,20 @@ const submitReview = async (grade: number) => {
 
 /** Переходит к следующей карточке (с задержкой для анимации) */
 const nextCard = () => {
+  playClickSound()
   showAnswer.value = false
   setTimeout(() => {
     currentIndex.value++
     nextTick(() => {
       if (isFinished.value) {
         triggerConfetti()
+        try {
+          const audio = new Audio('/audio/training_success_sound.mp3')
+          successSound.value = audio
+          audio.play()
+        } catch {
+          // звук не критичен
+        }
       }
     })
   }, 50)
@@ -267,6 +352,7 @@ const nextCard = () => {
 
 /** Переключает авто-режим */
 const toggleAutoPlay = () => {
+  playClickSound()
   if (isAutoPlaying.value) {
     stopAutoPlay()
   } else {
@@ -337,11 +423,6 @@ onMounted(async () => {
 
   await loadCards()
 
-  if (cards.value.length === 0) {
-    router.push({ name: 'Home' })
-    return
-  }
-
   // Проверяем доступность TTS в Wails-режиме
   if (isWails) {
     try {
@@ -406,6 +487,11 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
   stopAutoPlay()
   stopPollingTTS()
+  if (successSound.value) {
+    successSound.value.pause()
+    successSound.value.currentTime = 0
+    successSound.value = null
+  }
 })
 </script>
 
@@ -460,6 +546,98 @@ onUnmounted(() => {
   border-radius: 1rem !important;
 }
 
+/* ===== Экран загрузки ===== */
+.loading-screen {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 350px;
+}
+
+.loading-card {
+  width: 100%;
+  max-width: 600px;
+  height: 350px;
+  perspective: 1200px;
+}
+
+.loading-card-inner {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #1a1a1a 0%, #111111 100%);
+  border: 1px solid #222222;
+  border-radius: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: loadingGlow 2s ease-in-out infinite;
+}
+
+@keyframes loadingGlow {
+  0%, 100% {
+    border-color: #222222;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    border-color: #333333;
+    box-shadow: 0 10px 40px rgba(255, 10, 20, 0.08), 0 0 60px rgba(255, 10, 20, 0.04);
+  }
+}
+
+.loading-char {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #ff0a14;
+  opacity: 0.6;
+  user-select: none;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff0a14;
+  opacity: 0.3;
+  animation: dotPulse 1.2s ease-in-out infinite;
+}
+
+.loading-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.loading-label {
+  margin: 0;
+  color: #555555;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+/* ===== Карточка тренировки ===== */
 .card-container {
   perspective: 1200px;
   flex: 1;
@@ -487,10 +665,12 @@ onUnmounted(() => {
   height: 100%;
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .card.flipped .card-inner {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) scale(1.03);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .card-front,
@@ -499,6 +679,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background: linear-gradient(145deg, #1a1a1a 0%, #111111 100%);
   border: 1px solid #222222;
   border-radius: 1.5rem;
@@ -513,6 +694,8 @@ onUnmounted(() => {
 .card-back {
   transform: rotateY(180deg);
   background: linear-gradient(145deg, #111111 0%, #1a1a1a 100%);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .text {
@@ -599,7 +782,7 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.action-buttons > * {
+.action-buttons>* {
   flex: 1;
   min-width: 120px;
 }
@@ -788,6 +971,25 @@ onUnmounted(() => {
 
 .icon {
   font-size: 1.25rem;
+}
+
+.hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-left: 5px;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+  line-height: 1.6;
+  vertical-align: middle;
+  text-transform: uppercase;
 }
 
 .tts-warning {

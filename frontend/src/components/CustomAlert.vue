@@ -125,6 +125,7 @@ const handleOverlayClick = () => {
 /** Обработчик клавиш Escape и Enter */
 const onKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && visible.value) {
+    e.stopImmediatePropagation()
     if (mode.value === 'confirm') {
       confirmAction(false)
     } else {

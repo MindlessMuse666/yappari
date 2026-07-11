@@ -9,25 +9,16 @@
 <template>
   <div class="home">
     <div class="header">
-      <img
-        src="/yappari_logo.png"
-        alt="Yappari Logo"
-        class="logo"
-        draggable="false"
-      />
+      <img src="/yappari_logo.png" alt="Yappari Logo" class="logo" draggable="false" />
       <h1>Yappari</h1>
     </div>
 
     <div class="actions">
       <button @click="createDeckModalVisible = true" class="primary-btn">
         <span class="icon">+</span>
-        Новая колода
+        Новая колода <kbd class="hotkey-hint">Ctrl N</kbd>
       </button>
-      <button
-        v-if="decks.length > 0"
-        @click="toggleSelectAll"
-        class="primary-btn select-all-btn"
-      >
+      <button v-if="decks.length > 0" @click="toggleSelectAll" class="primary-btn select-all-btn">
         {{ allSelected ? 'Сбросить все' : 'Выбрать все' }}
       </button>
     </div>
@@ -39,19 +30,10 @@
     <div v-else class="deck-list">
       <div v-for="deck in decks" :key="deck.ID" class="deck-item">
         <label class="deck-checkbox-wrapper" :for="`deck-${deck.ID}`">
-          <input
-            type="checkbox"
-            :id="`deck-${deck.ID}`"
-            v-model="selectedDeckIds"
-            :value="deck.ID"
-          />
+          <input type="checkbox" :id="`deck-${deck.ID}`" v-model="selectedDeckIds" :value="deck.ID" />
           <span class="deck-name">{{ deck.Name }}</span>
         </label>
-        <button
-          @click.stop="goToDeck(deck.ID)"
-          class="gear-btn"
-          title="Управлять колодой"
-        >
+        <button @click.stop="goToDeck(deck.ID)" class="gear-btn" title="Управлять колодой">
           ⚙️
         </button>
       </div>
@@ -60,28 +42,16 @@
     <div v-if="decks.length > 0" class="training-buttons">
       <!-- Кнопка: Интервальное повторение -->
       <div class="training-btn-wrapper">
-        <button
-          @click="startTraining('interval')"
-          :disabled="selectedDeckIds.length === 0"
-          class="training-btn"
-        >
+        <button @click="startTraining('interval')" :disabled="selectedDeckIds.length === 0" class="training-btn">
           Повторение
         </button>
-        <div
-          class="corner-trigger"
-          @mouseenter="activePopover = 'interval'"
-          @mouseleave="onLeavePopover"
-          @click="startTraining('interval')"
-        >
-          <span class="corner-fold">✦</span>
+        <div class="corner-trigger" @mouseenter="showPopover('interval')" @mouseleave="onLeavePopover"
+          @click="startTraining('interval')">
+          <span class="corner-fold">?</span>
         </div>
         <Transition name="popover">
-          <div
-            v-if="activePopover === 'interval'"
-            class="legend-popover"
-            @mouseenter="clearPopoverTimer"
-            @mouseleave="onLeavePopover"
-          >
+          <div v-if="activePopover === 'interval'" class="legend-popover" @mouseenter="clearPopoverTimer"
+            @mouseleave="onLeavePopover">
             <strong class="popover-title">Интервальное повторение</strong>
             <p class="popover-desc">
               Умная система SM-2 следит за твоими успехами и подсовывает
@@ -93,28 +63,16 @@
 
       <!-- Кнопка: Свободный режим -->
       <div class="training-btn-wrapper">
-        <button
-          @click="startTraining('free')"
-          :disabled="selectedDeckIds.length === 0"
-          class="training-btn"
-        >
+        <button @click="startTraining('free')" :disabled="selectedDeckIds.length === 0" class="training-btn">
           Свободный режим
         </button>
-        <div
-          class="corner-trigger"
-          @mouseenter="activePopover = 'free'"
-          @mouseleave="onLeavePopover"
-          @click="startTraining('free')"
-        >
-          <span class="corner-fold">✦</span>
+        <div class="corner-trigger" @mouseenter="showPopover('free')" @mouseleave="onLeavePopover"
+          @click="startTraining('free')">
+          <span class="corner-fold">?</span>
         </div>
         <Transition name="popover">
-          <div
-            v-if="activePopover === 'free'"
-            class="legend-popover"
-            @mouseenter="clearPopoverTimer"
-            @mouseleave="onLeavePopover"
-          >
+          <div v-if="activePopover === 'free'" class="legend-popover" @mouseenter="clearPopoverTimer"
+            @mouseleave="onLeavePopover">
             <strong class="popover-title">Свободный режим</strong>
             <p class="popover-desc">
               Свободный темп + автовоспроизведение по желанию. Можно включить
@@ -126,26 +84,15 @@
     </div>
 
     <!-- Модальное окно создания колоды -->
-    <Dialog
-      v-model:visible="createDeckModalVisible"
-      header="Создать колоду"
-      class="custom-dialog"
-      :closable="false"
-      @show="focusDeckNameInput"
-    >
+    <Dialog v-model:visible="createDeckModalVisible" header="Создать колоду" class="custom-dialog" :closable="false"
+      @show="focusDeckNameInput">
       <div class="form-content" :class="{ shake: shake }">
         <div class="input-group">
           <label for="deck-name">
             Название колоды <span class="required-asterisk">*</span>
           </label>
-          <InputText
-            id="deck-name"
-            v-model="newDeckName"
-            placeholder="Введите название колоды"
-            class="custom-input"
-            :class="{ 'input-error': errors.deckName }"
-            @keyup.enter="createDeck"
-          />
+          <InputText id="deck-name" v-model="newDeckName" placeholder="Введите название колоды" class="custom-input"
+            :class="{ 'input-error': errors.deckName }" @keyup.enter="createDeck" />
           <div v-if="errors.deckName" class="error">{{ errors.deckName }}</div>
         </div>
       </div>
@@ -164,7 +111,7 @@
  * @module views/Home
  */
 
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -172,6 +119,7 @@ import Button from 'primevue/button'
 import type { Deck } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
+import { playClickSound } from '../composables/useSound'
 
 const router = useRouter()
 const { getDecks, createDeck: createDeckWails } = useWails()
@@ -229,6 +177,7 @@ const triggerShake = () => {
 
 /** Создаёт новую колоду */
 const createDeck = async () => {
+  playClickSound()
   if (!validateForm()) return
   try {
     isLoading.value = true
@@ -250,6 +199,7 @@ const focusDeckNameInput = () => {
 
 /** Закрывает модалку создания колоды и сбрасывает форму */
 const closeCreateModal = () => {
+  playClickSound()
   createDeckModalVisible.value = false
   newDeckName.value = ''
   errors.value = { deckName: '' }
@@ -257,11 +207,13 @@ const closeCreateModal = () => {
 
 /** Переход на страницу управления колодой */
 const goToDeck = (id: number) => {
+  playClickSound()
   router.push({ name: 'DeckManage', params: { id } })
 }
 
 /** Переход к тренировке */
 const startTraining = (mode: string) => {
+  playClickSound()
   if (selectedDeckIds.value.length === 0) return
   router.push({
     name: 'Training',
@@ -271,10 +223,19 @@ const startTraining = (mode: string) => {
 
 /** Выделить / снять выделение со всех колод */
 const toggleSelectAll = () => {
+  playClickSound()
   if (allSelected.value) {
     selectedDeckIds.value = []
   } else {
     selectedDeckIds.value = decks.value.map(d => d.ID)
+  }
+}
+
+/** Ctrl+N — открыть модалку создания колоды */
+const onKeydown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyN') {
+    e.preventDefault()
+    createDeckModalVisible.value = true
   }
 }
 
@@ -292,12 +253,23 @@ const onLeavePopover = () => {
   popoverTimer = setTimeout(() => { activePopover.value = null }, 250)
 }
 
+/** Показывает поповер после задержки (защита от случайного наведения) */
+const showPopover = (mode: string) => {
+  clearPopoverTimer()
+  popoverTimer = setTimeout(() => { activePopover.value = mode }, 350)
+}
+
 onMounted(async () => {
+  document.addEventListener('keydown', onKeydown)
   const saved = localStorage.getItem('selectedDeckIds')
   if (saved) {
     selectedDeckIds.value = JSON.parse(saved)
   }
   await loadDecks()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
 })
 
 /** Сохраняет выбранные колоды в localStorage */
@@ -509,37 +481,60 @@ watch(selectedDeckIds, (newVal) => {
   cursor: not-allowed;
 }
 
+.training-btn:disabled ~ .corner-trigger {
+  pointer-events: none;
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.training-btn:disabled ~ .corner-trigger:hover {
+  background: #1a1a1a;
+  border-color: #333333;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.training-btn:disabled ~ .corner-trigger:hover .corner-fold {
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .corner-trigger {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 36px;
-  height: 36px;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
   z-index: 5;
   cursor: pointer;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.corner-trigger:hover {
+  background: #ff0a14;
+  border-color: #ff0a14;
+  transform: scale(1.15);
+  box-shadow: 0 3px 16px rgba(255, 10, 20, 0.45);
 }
 
 .corner-fold {
-  display: block;
-  width: 100%;
-  height: 100%;
-  clip-path: polygon(100% 0, 0 0, 100% 100%);
-  background: linear-gradient(135deg, transparent 0%, rgba(255, 10, 20, 0.45) 100%);
-  border-left: 1px solid rgba(255, 10, 20, 0.3);
-  border-bottom: 1px solid rgba(255, 10, 20, 0.3);
-  transition: all 0.3s ease;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.55rem;
-  line-height: 1;
-  text-align: right;
-  padding: 3px 4px 0 0;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.3s ease;
   pointer-events: none;
+  user-select: none;
+  line-height: 1;
+  font-weight: 600;
+  display: inline-block;
 }
 
 .corner-trigger:hover .corner-fold {
-  background: linear-gradient(135deg, transparent 0%, rgba(255, 10, 20, 0.75) 100%);
-  border-left-color: rgba(255, 10, 20, 0.5);
-  border-bottom-color: rgba(255, 10, 20, 0.5);
   color: #ffffff;
 }
 
@@ -553,6 +548,7 @@ watch(selectedDeckIds, (newVal) => {
   padding: 1rem 1.25rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   z-index: 10;
+  user-select: none;
 }
 
 .popover-title {
@@ -598,9 +594,19 @@ watch(selectedDeckIds, (newVal) => {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .input-group {
@@ -648,6 +654,25 @@ watch(selectedDeckIds, (newVal) => {
   color: #ff4444;
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+.hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  padding: 0 5px;
+  margin-left: 5px;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+  line-height: 1.6;
+  vertical-align: middle;
+  text-transform: uppercase;
 }
 </style>
 
