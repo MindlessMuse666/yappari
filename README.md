@@ -7,6 +7,7 @@
    <a href="https://vuejs.org"><img src="https://img.shields.io/badge/Vue.js-3.5-4FC08D?style=for-the-badge&logo=vuedotjs" alt="Vue.js" height="35"></a>
    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript" height="35"></a>
    <a href="https://www.sqlite.org/"><img src="https://img.shields.io/badge/SQLite-3-003B57?style=for-the-badge&logo=sqlite" alt="SQLite" height="35"></a>
+   <br/>
    <a href="https://github.com/MindlessMuse666/yappari/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/AGPLv3-yellow?style=for-the-badge&logo=readme&logoColor=white" alt="AGPL v3" height="35"></a>
    <a href="https://www.microsoft.com/windows"><img src="https://img.shields.io/badge/Windows%2011-0078D4?style=for-the-badge&logo=windows" alt="Windows 11" height="35"></a>
 </div>
@@ -19,7 +20,9 @@
 
 Проект родился из желания иметь лёгкое, быстрое и красивое приложение для себя и своих близких, чтобы удобно заучивать японскую лексику.
 
-> **Статус:** Версия v1.0-alpha — стабильный релиз, но без русско-японской озвучки (сейчас она активно разрабатывается и тестировкется) 🚀
+> **Статус:** Версия v1.2-beta — стабильный релиз, хотя и возможны незначительные баги XD
+>
+> Есть также **веб-версия** приложения (Go + Vue + TypeScript + CSS): [yappari-web](https://github.com/MindlessMuse666/yappari-web)
 
 <details open>
    <summary><b>Нажмите, чтобы скрыть/показать скриншоты</b></summary>
@@ -52,12 +55,28 @@
 
 | Функция | Описание |
 | ------- | -------- |
-| 🧠 **SM-2** | Алгоритм интервального повторения с ручной оценкой |
+| 🧠 **SM-2** | Алгоритм интервального повторения с ручной оценкой (1-4) |
 | 🗂️ **Колоды** | Создавай, редактируй и удаляй тематические наборы карточек |
 | 🃏 **Карточки** | Японское слово + чтение каной + русский перевод |
 | 🔊 **Озвучка** | Встроенный офлайн TTS: Silero (русский) + Kokoro (японский). Первый запуск — с интернетом, затем полностью офлайн |
 | 🎲 **Свободный режим** | Листай карточки без расписания. Есть автовоспроизведение! |
-| 🌙 **Тёмная тема** | Чёрный фон, белый текст, акцентный красный `#ff0a14`. Основная палитра: #000, #fff, #c7cdd8, #ff0a14 |
+| ⌨️ **Хоткеи** | Полное управление с клавиатуры (см. таблицу ниже) |
+| 🌙 **Тёмная тема** | Чёрный фон, белый текст, акцентный красный `#ff0a14`. Анимированные орбы на фоне |
+| 🎬 **Анимации** | Плавная смена карточек, flip-эффект, skeleton-загрузка, confetti при завершении |
+| 🖥️ **Полный экран** | Переключение по `F` или через профиль-поповер |
+
+### Хоткеи
+
+| Клавиша | Действие | Страница |
+| ------- | -------- | -------- |
+| `N` | Создать колоду | Главная |
+| `A` | Выбрать все / сбросить | Главная |
+| `Q` | Новая карточка | Управление колодой |
+| `W` | Автовоспроизведение | Тренировка |
+| `Space` | Показать ответ | Тренировка |
+| `1` `2` `3` `4` | Оценка карточки (SM-2) | Тренировка |
+| `Esc` | Назад / Выход | Все страницы |
+| `F` | Полный экран / Окно | Все страницы |
 
 ---
 
@@ -140,7 +159,7 @@ yappari/
 ├── frontend/            # Vue.js приложение
 │   ├── src/
 │   │   ├── views/       # Home, DeckManage, Training
-│   │   ├── components/  # FuriganaText, CustomAlert
+│   │   ├── components/  # FuriganaText, CustomAlert, TtsStatus
 │   │   ├── composables/ # IPC-вызовы + моки
 │   │   └── router/      # Vue Router
 │   └── public/fonts/    # Inter + Noto Sans JP
@@ -153,7 +172,15 @@ yappari/
 | ------- | -------- |
 | `wails dev` | Запуск в режиме разработки (hot-reload) |
 | `wails build` | Продакшн-сборка |
-| `go test ./...` | Запуск тестов |
+| `go test ./...` | Запуск тестов Go |
+| `ruff check backend/tts/python/` | Линтинг Python-кода |
+| `golangci-lint run ./...` | Линтинг Go-кода |
+
+---
+
+## Веб-версия
+
+Существует также **веб-версия** Yappari: [yappari-web](https://github.com/MindlessMuse666/yappari-web).
 
 ---
 
