@@ -196,7 +196,6 @@ def main():
     args = parser.parse_args()
 
     setup_logging()
-    logger = logging.getLogger("main")
 
     # Игнорируем SIGINT/SIGTERM — Go управляет процессом
     signal.signal(signal.SIGINT, signal.SIG_IGN)

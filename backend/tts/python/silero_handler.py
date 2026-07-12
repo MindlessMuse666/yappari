@@ -8,7 +8,6 @@
 import io
 import logging
 import os
-import sys
 
 logger = logging.getLogger("silero")
 
@@ -89,7 +88,6 @@ class SileroHandler:
         if self._model is None:
             raise RuntimeError("Silero: модель не загружена")
 
-        import torch
         import torchaudio
 
         audio_tensor = self._model.apply_tts(

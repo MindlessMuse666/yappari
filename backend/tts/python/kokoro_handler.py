@@ -7,7 +7,6 @@
 
 import io
 import logging
-import sys
 
 logger = logging.getLogger("kokoro")
 
