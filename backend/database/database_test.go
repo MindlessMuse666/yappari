@@ -133,12 +133,12 @@ func TestCreateAndGetCards(t *testing.T) {
 	}
 
 	// Создаём карточку
-	furigana := "たべる"
+	kana := "たべる"
 	input := CardInput{
-		DeckID:       deck.ID,
-		KanjiText:    "食べる",
-		FuriganaText: &furigana,
-		Translation:  "есть, кушать",
+		DeckID:      deck.ID,
+		KanjiText:   "食べる",
+		KanaText:    &kana,
+		Translation: "есть, кушать",
 	}
 
 	card, err := CreateCard(input)
@@ -180,12 +180,12 @@ func TestUpdateCard(t *testing.T) {
 		Translation: "старый",
 	})
 
-	newFurigana := "ふるい"
+	newKana := "ふるい"
 	err := UpdateCard(card.ID, CardInput{
-		DeckID:       deck.ID,
-		KanjiText:    "古い",
-		FuriganaText: &newFurigana,
-		Translation:  "старый (о вещах)",
+		DeckID:      deck.ID,
+		KanjiText:   "古い",
+		KanaText:    &newKana,
+		Translation: "старый (о вещах)",
 	})
 	if err != nil {
 		t.Fatalf("не удалось обновить карточку: %v", err)
@@ -198,8 +198,8 @@ func TestUpdateCard(t *testing.T) {
 	if updated.Translation != "старый (о вещах)" {
 		t.Errorf("ожидался перевод 'старый (о вещах)', получен '%s'", updated.Translation)
 	}
-	if updated.FuriganaText == nil || *updated.FuriganaText != "ふるい" {
-		t.Errorf("ожидалась фуригана 'ふるい', получена %v", updated.FuriganaText)
+	if updated.KanaText == nil || *updated.KanaText != "ふるい" {
+		t.Errorf("ожидалась кана 'ふるい', получена %v", updated.KanaText)
 	}
 }
 

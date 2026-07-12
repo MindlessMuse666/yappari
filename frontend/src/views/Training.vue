@@ -42,7 +42,7 @@
                 <div class="word-section">
                   <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }"
                     @click="speakJapaneseOnly">
-                    <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
+                    <KanaText :KanjiText="currentCard.KanjiText" :KanaText="currentCard.KanaText" />
                   </div>
                 </div>
                 <div class="separator"></div>
@@ -130,7 +130,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ProgressBar from 'primevue/progressbar'
-import FuriganaText from '../components/FuriganaText.vue'
+import KanaText from '../components/KanaText.vue'
 import type { TrainingCard as TrainingCardType } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'

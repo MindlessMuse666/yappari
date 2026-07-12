@@ -27,9 +27,9 @@ type Card struct {
 	// KanjiText — полное написание слова (например "食べる").
 	KanjiText string `json:"KanjiText"`
 
-	// FuriganaText — полное чтение каной (например "たべる").
+	// KanaText — полное чтение каной (например "たべる").
 	// Может быть nil, если слово не содержит кандзи.
-	FuriganaText *string `json:"FuriganaText"`
+	KanaText *string `json:"KanaText"`
 
 	// Translation — русский перевод слова.
 	Translation string `json:"Translation"`
@@ -65,8 +65,8 @@ type CardInput struct {
 	// KanjiText — полное написание слова (обязательное поле).
 	KanjiText string `json:"KanjiText"`
 
-	// FuriganaText — чтение каной (опционально).
-	FuriganaText *string `json:"FuriganaText"`
+	// KanaText — чтение каной (опционально).
+	KanaText *string `json:"KanaText"`
 
 	// Translation — русский перевод (обязательное поле).
 	Translation string `json:"Translation"`
@@ -81,8 +81,8 @@ type TrainingCard struct {
 	// KanjiText — полное написание слова.
 	KanjiText string `json:"KanjiText"`
 
-	// FuriganaText — чтение каной (может быть nil).
-	FuriganaText *string `json:"FuriganaText"`
+	// KanaText — чтение каной (может быть nil).
+	KanaText *string `json:"KanaText"`
 
 	// Translation — русский перевод.
 	Translation string `json:"Translation"`

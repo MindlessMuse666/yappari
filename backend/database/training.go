@@ -30,7 +30,7 @@ func GetTrainingCards(mode string, deckIDs []int) ([]TrainingCard, error) {
 
 	// Базовый запрос: все карточки из указанных колод
 	baseQuery := `
-		SELECT id, kanji_text, furigana_text, translation
+		SELECT id, kanji_text, kana_text, translation
 		FROM cards
 		WHERE deck_id IN (` + deckPlaceholders + `)
 	`
@@ -73,7 +73,7 @@ func queryCards(query string, placeholders ...any) ([]TrainingCard, error) {
 	cards := make([]TrainingCard, 0)
 	for rows.Next() {
 		var c TrainingCard
-		if err := rows.Scan(&c.ID, &c.KanjiText, &c.FuriganaText, &c.Translation); err != nil {
+		if err := rows.Scan(&c.ID, &c.KanjiText, &c.KanaText, &c.Translation); err != nil {
 			return nil, fmt.Errorf("не удалось прочитать карточку тренировки: %w", err)
 		}
 		cards = append(cards, c)

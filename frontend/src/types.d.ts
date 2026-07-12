@@ -19,7 +19,7 @@ export interface Card {
   ID: number
   DeckID: number
   KanjiText: string
-  FuriganaText?: string | null
+  KanaText?: string | null
   Translation: string
   EaseFactor: number
   Interval: number
@@ -34,7 +34,7 @@ export interface Card {
 export interface CardInput {
   DeckID: number
   KanjiText: string
-  FuriganaText?: string | null
+  KanaText?: string | null
   Translation: string
 }
 
@@ -42,7 +42,7 @@ export interface CardInput {
 export interface TrainingCard {
   ID: number
   KanjiText: string
-  FuriganaText?: string | null
+  KanaText?: string | null
   Translation: string
 }
 

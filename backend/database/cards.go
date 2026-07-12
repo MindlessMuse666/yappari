@@ -9,7 +9,7 @@ import (
 // от новых к старым.
 func GetCardsByDeck(deckID int) ([]Card, error) {
 	rows, err := DB.Query(`
-		SELECT id, deck_id, kanji_text, furigana_text, translation,
+		SELECT id, deck_id, kanji_text, kana_text, translation,
 		       ease_factor, interval, repetitions, next_review,
 		       last_review, created_at, updated_at
 		FROM cards
@@ -25,7 +25,7 @@ func GetCardsByDeck(deckID int) ([]Card, error) {
 	for rows.Next() {
 		var c Card
 		err := rows.Scan(
-			&c.ID, &c.DeckID, &c.KanjiText, &c.FuriganaText,
+			&c.ID, &c.DeckID, &c.KanjiText, &c.KanaText,
 			&c.Translation, &c.EaseFactor, &c.Interval,
 			&c.Repetitions, &c.NextReview, &c.LastReview,
 			&c.CreatedAt, &c.UpdatedAt,
@@ -47,12 +47,12 @@ func GetCardsByDeck(deckID int) ([]Card, error) {
 func GetCardByID(id int) (*Card, error) {
 	var c Card
 	err := DB.QueryRow(`
-		SELECT id, deck_id, kanji_text, furigana_text, translation,
+		SELECT id, deck_id, kanji_text, kana_text, translation,
 		       ease_factor, interval, repetitions, next_review,
 		       last_review, created_at, updated_at
 		FROM cards WHERE id = ?
 	`, id).Scan(
-		&c.ID, &c.DeckID, &c.KanjiText, &c.FuriganaText,
+		&c.ID, &c.DeckID, &c.KanjiText, &c.KanaText,
 		&c.Translation, &c.EaseFactor, &c.Interval,
 		&c.Repetitions, &c.NextReview, &c.LastReview,
 		&c.CreatedAt, &c.UpdatedAt,
@@ -70,9 +70,9 @@ func CreateCard(input CardInput) (*Card, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	result, err := DB.Exec(`
-		INSERT INTO cards (deck_id, kanji_text, furigana_text, translation, next_review)
+		INSERT INTO cards (deck_id, kanji_text, kana_text, translation, next_review)
 		VALUES (?, ?, ?, ?, ?)
-	`, input.DeckID, input.KanjiText, input.FuriganaText, input.Translation, now)
+	`, input.DeckID, input.KanjiText, input.KanaText, input.Translation, now)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось создать карточку: %w", err)
 	}
@@ -83,17 +83,17 @@ func CreateCard(input CardInput) (*Card, error) {
 	}
 
 	c := &Card{
-		ID:           int(id),
-		DeckID:       input.DeckID,
-		KanjiText:    input.KanjiText,
-		FuriganaText: input.FuriganaText,
-		Translation:  input.Translation,
-		EaseFactor:   2.5,
-		Interval:     0,
-		Repetitions:  0,
-		NextReview:   now,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:          int(id),
+		DeckID:      input.DeckID,
+		KanjiText:   input.KanjiText,
+		KanaText:    input.KanaText,
+		Translation: input.Translation,
+		EaseFactor:  2.5,
+		Interval:    0,
+		Repetitions: 0,
+		NextReview:  now,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	return c, nil
 }
@@ -104,10 +104,10 @@ func UpdateCard(id int, input CardInput) error {
 
 	result, err := DB.Exec(`
 		UPDATE cards
-		SET deck_id = ?, kanji_text = ?, furigana_text = ?,
+		SET deck_id = ?, kanji_text = ?, kana_text = ?,
 		    translation = ?, updated_at = ?
 		WHERE id = ?
-	`, input.DeckID, input.KanjiText, input.FuriganaText, input.Translation, now, id)
+	`, input.DeckID, input.KanjiText, input.KanaText, input.Translation, now, id)
 	if err != nil {
 		return fmt.Errorf("не удалось обновить карточку: %w", err)
 	}

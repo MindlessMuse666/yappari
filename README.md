@@ -159,7 +159,7 @@ yappari/
 ├── frontend/            # Vue.js приложение
 │   ├── src/
 │   │   ├── views/       # Home, DeckManage, Training
-│   │   ├── components/  # FuriganaText, CustomAlert, TtsStatus
+│   │   ├── components/  # KanaText, CustomAlert, TtsStatus
 │   │   ├── composables/ # IPC-вызовы + моки
 │   │   └── router/      # Vue Router
 │   └── public/fonts/    # Inter + Noto Sans JP

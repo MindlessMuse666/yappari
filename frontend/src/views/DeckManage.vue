@@ -43,10 +43,10 @@
       <div v-else class="cards-grid">
         <div v-for="card in cards" :key="card.ID" class="card-item" @click="editCard(card)">
           <div class="card-main">
-            <FuriganaText :KanjiText="card.KanjiText" :FuriganaText="card.FuriganaText" />
+            <KanaText :KanjiText="card.KanjiText" :KanaText="card.KanaText" />
           </div>
           <div class="card-translation">
-            <FuriganaText :KanjiText="card.Translation" Language="ru" />
+            <KanaText :KanjiText="card.Translation" Language="ru" />
           </div>
           <button @click.stop="deleteCardById(card.ID)" class="card-delete-btn" title="Удалить">
             ×
@@ -68,8 +68,8 @@
           <div v-if="errors.kanjiText" class="error">{{ errors.kanjiText }}</div>
         </div>
         <div class="input-group">
-          <label for="furigana-text">Чтение (фуригана)</label>
-          <InputText id="furigana-text" v-model="cardForm.FuriganaText" placeholder="Введите чтение"
+          <label for="kana-text">Чтение (кана)</label>
+          <InputText id="kana-text" v-model="cardForm.KanaText" placeholder="Введите чтение"
             class="custom-input" @keydown.enter="onSaveCardEnter" />
         </div>
         <div class="input-group">
@@ -105,7 +105,7 @@ import type { Deck, Card, CardInput } from '../types'
 import { useWails } from '../composables/useWails'
 import { useAlert } from '../composables/useAlert'
 import { playClickSound } from '../composables/useSound'
-import FuriganaText from '../components/FuriganaText.vue'
+import KanaText from '../components/KanaText.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -124,7 +124,7 @@ const deckName = ref('')
 const cards = ref<Card[]>([])
 const cardFormModalVisible = ref(false)
 const editingCard = ref<Card | null>(null)
-const cardForm = ref({ KanjiText: '', FuriganaText: '', Translation: '' })
+const cardForm = ref({ KanjiText: '', KanaText: '', Translation: '' })
 const errors = ref({ kanjiText: '', translation: '' })
 const shake = ref(false)
 const isInitialLoading = ref(true)
@@ -161,7 +161,7 @@ const goBack = () => {
 const openNewCardForm = () => {
   playClickSound()
   editingCard.value = null
-  cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
+  cardForm.value = { KanjiText: '', KanaText: '', Translation: '' }
   errors.value = { kanjiText: '', translation: '' }
   cardFormModalVisible.value = true
 }
@@ -169,7 +169,7 @@ const openNewCardForm = () => {
 /** Сбрасывает состояние при скрытии диалога (Escape, клик вне окна) */
 const onDialogHide = () => {
   editingCard.value = null
-  cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
+  cardForm.value = { KanjiText: '', KanaText: '', Translation: '' }
   errors.value = { kanjiText: '', translation: '' }
 }
 
@@ -293,7 +293,7 @@ const editCard = (card: Card) => {
   editingCard.value = card
   cardForm.value = {
     KanjiText: card.KanjiText,
-    FuriganaText: card.FuriganaText || '',
+    KanaText: card.KanaText || '',
     Translation: card.Translation,
   }
   cardFormModalVisible.value = true
@@ -327,7 +327,7 @@ const saveCard = async () => {
     const input: CardInput = {
       DeckID: deckId,
       KanjiText: cardForm.value.KanjiText,
-      FuriganaText: cardForm.value.FuriganaText.trim() || null,
+      KanaText: cardForm.value.KanaText.trim() || null,
       Translation: cardForm.value.Translation,
     }
 
@@ -350,7 +350,7 @@ const closeCardModal = () => {
   playClickSound()
   cardFormModalVisible.value = false
   editingCard.value = null
-  cardForm.value = { KanjiText: '', FuriganaText: '', Translation: '' }
+  cardForm.value = { KanjiText: '', KanaText: '', Translation: '' }
   errors.value = { kanjiText: '', translation: '' }
 }
 

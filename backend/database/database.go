@@ -71,7 +71,7 @@ func runMigrations() error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			deck_id INTEGER NOT NULL,
 			kanji_text TEXT NOT NULL,
-			furigana_text TEXT,
+			kana_text TEXT,
 			translation TEXT NOT NULL,
 			ease_factor REAL NOT NULL DEFAULT 2.5,
 			interval INTEGER NOT NULL DEFAULT 0,

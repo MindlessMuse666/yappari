@@ -116,7 +116,7 @@ export function useWails() {
     const cards = await getMockCards()
     const newCard: Card = {
       ID: Date.now(), DeckID: input.DeckID,
-      KanjiText: input.KanjiText, FuriganaText: input.FuriganaText,
+      KanjiText: input.KanjiText, KanaText: input.KanaText,
       Translation: input.Translation,
       EaseFactor: 2.5, Interval: 0, Repetitions: 0,
       NextReview: new Date().toISOString(),
@@ -137,7 +137,7 @@ export function useWails() {
     const card = cards.find(c => c.ID === id)
     if (card) {
       card.KanjiText = input.KanjiText
-      card.FuriganaText = input.FuriganaText
+      card.KanaText = input.KanaText
       card.Translation = input.Translation
     }
   }
@@ -168,7 +168,7 @@ export function useWails() {
     const cards = await getMockCards()
     return cards.filter(c => deckIDs.includes(c.DeckID)).map(c => ({
       ID: c.ID, KanjiText: c.KanjiText,
-      FuriganaText: c.FuriganaText, Translation: c.Translation,
+      KanaText: c.KanaText, Translation: c.Translation,
     }))
   }
 
