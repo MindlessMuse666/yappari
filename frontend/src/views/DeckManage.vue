@@ -12,7 +12,7 @@
       <button @click="goBack" class="icon-btn" title="Назад">
         <span class="icon">←</span>
       </button>
-      <InputText v-model="deckName" @keyup.enter="updateDeckName" placeholder="Название колоды"
+      <InputText v-model="deckName" @keydown.enter="onUpdateDeckNameEnter" placeholder="Название колоды"
         class="deck-name-input" />
       <div class="header-actions">
         <button @click="resetDeckProgress" class="secondary-btn" title="Сбросить прогресс">
@@ -27,27 +27,33 @@
     <div class="add-card">
       <button @click="openNewCardForm" class="primary-btn">
         <span class="icon">+</span>
-        Добавить карточку <kbd class="hotkey-hint">Ctrl Q</kbd>
+        Добавить карточку <kbd class="hotkey-hint">Q</kbd>
       </button>
     </div>
 
-    <div v-if="cards.length === 0" class="empty-state">
-      <p>В этой колоде пока нет карточек. Добавь первую!</p>
+    <div v-if="isInitialLoading" class="loading-state">
+      <div class="skeleton-card" v-for="i in 6" :key="i"></div>
     </div>
 
-    <div v-else class="cards-grid">
-      <div v-for="card in cards" :key="card.ID" class="card-item" @click="editCard(card)">
-        <div class="card-main">
-          <FuriganaText :KanjiText="card.KanjiText" :FuriganaText="card.FuriganaText" />
-        </div>
-        <div class="card-translation">
-          <FuriganaText :KanjiText="card.Translation" Language="ru" />
-        </div>
-        <button @click.stop="deleteCardById(card.ID)" class="card-delete-btn" title="Удалить">
-          ×
-        </button>
+    <template v-else>
+      <div v-if="cards.length === 0" class="empty-state">
+        <p>В этой колоде пока нет карточек. Добавь первую!</p>
       </div>
-    </div>
+
+      <div v-else class="cards-grid">
+        <div v-for="card in cards" :key="card.ID" class="card-item" @click="editCard(card)">
+          <div class="card-main">
+            <FuriganaText :KanjiText="card.KanjiText" :FuriganaText="card.FuriganaText" />
+          </div>
+          <div class="card-translation">
+            <FuriganaText :KanjiText="card.Translation" Language="ru" />
+          </div>
+          <button @click.stop="deleteCardById(card.ID)" class="card-delete-btn" title="Удалить">
+            ×
+          </button>
+        </div>
+      </div>
+    </template>
 
     <!-- Модальное окно создания/редактирования карточки -->
     <Dialog v-model:visible="cardFormModalVisible" :header="editingCard ? 'Редактировать карточку' : 'Новая карточка'"
@@ -58,20 +64,20 @@
             Японское слово <span class="required-asterisk">*</span>
           </label>
           <InputText id="kanji-text" v-model="cardForm.KanjiText" placeholder="Введите японское слово"
-            class="custom-input" :class="{ 'input-error': errors.kanjiText }" @keyup.enter="saveCard" />
+            class="custom-input" :class="{ 'input-error': errors.kanjiText }" @keydown.enter="onSaveCardEnter" />
           <div v-if="errors.kanjiText" class="error">{{ errors.kanjiText }}</div>
         </div>
         <div class="input-group">
           <label for="furigana-text">Чтение (фуригана)</label>
           <InputText id="furigana-text" v-model="cardForm.FuriganaText" placeholder="Введите чтение"
-            class="custom-input" @keyup.enter="saveCard" />
+            class="custom-input" @keydown.enter="onSaveCardEnter" />
         </div>
         <div class="input-group">
           <label for="translation">
             Перевод <span class="required-asterisk">*</span>
           </label>
           <InputText id="translation" v-model="cardForm.Translation" placeholder="Введите перевод" class="custom-input"
-            :class="{ 'input-error': errors.translation }" @keyup.enter="saveCard" />
+            :class="{ 'input-error': errors.translation }" @keydown.enter="onSaveCardEnter" />
           <div v-if="errors.translation" class="error">{{ errors.translation }}</div>
         </div>
       </div>
@@ -121,6 +127,7 @@ const editingCard = ref<Card | null>(null)
 const cardForm = ref({ KanjiText: '', FuriganaText: '', Translation: '' })
 const errors = ref({ kanjiText: '', translation: '' })
 const shake = ref(false)
+const isInitialLoading = ref(true)
 
 /** Загружает данные колоды */
 const loadDeck = async () => {
@@ -166,14 +173,19 @@ const onDialogHide = () => {
   errors.value = { kanjiText: '', translation: '' }
 }
 
-/** Escape → на главную (если не открыта модалка карточки) */
+/** Обработчик клавиш: Q — новая карточка, Escape — на главную */
 const onKeydown = (e: KeyboardEvent) => {
-  // Ctrl/Cmd+Q → новая карточка
-  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyQ') {
+  // Защита от IME-композиции (японский ввод)
+  if (e.isComposing || e.keyCode === 229) return
+
+  const target = e.target as HTMLElement
+  // Игнорируем хоткеи при вводе в текстовые поля
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+
+  // Q -> новая карточка
+  if (e.code === 'KeyQ' && !cardFormModalVisible.value) {
     e.preventDefault()
-    if (!cardFormModalVisible.value) {
-      openNewCardForm()
-    }
+    openNewCardForm()
     return
   }
 
@@ -181,6 +193,18 @@ const onKeydown = (e: KeyboardEvent) => {
     e.preventDefault()
     goBack()
   }
+}
+
+/** Обработчик Enter на переименовании колоды (с защитой от IME) */
+const onUpdateDeckNameEnter = (e: KeyboardEvent) => {
+  if (e.isComposing || e.keyCode === 229) return
+  updateDeckName()
+}
+
+/** Обработчик Enter на форме карточки (с защитой от IME) */
+const onSaveCardEnter = (e: KeyboardEvent) => {
+  if (e.isComposing || e.keyCode === 229) return
+  saveCard()
 }
 
 /** Сохраняет новое название колоды по Enter */
@@ -332,8 +356,11 @@ const closeCardModal = () => {
 
 onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
-  await loadDeck()
-  await loadCards()
+  try {
+    await Promise.all([loadDeck(), loadCards()])
+  } finally {
+    isInitialLoading.value = false
+  }
 })
 
 onUnmounted(() => {
@@ -357,6 +384,33 @@ watch(cardFormModalVisible, (open) => {
   padding: 2rem;
   max-width: 1000px;
   margin: 0 auto;
+}
+
+/* ===== Loading skeleton ===== */
+.loading-state {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.skeleton-card {
+  height: 120px;
+  background: #111111;
+  border: 1px solid #222222;
+  border-radius: 1rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .header {

@@ -3,7 +3,7 @@
  *
  * Стратегия выбора бэкенда (в порядке приоритета):
  * 1. Web Speech API — встроен в WebView2/браузер, zero-install, работает офлайн
- * 2. Go IPC (Wails → Python TTS) — только если Web Speech не нашёл голоса для языка
+ * 2. Go IPC (Wails -> Python TTS) — только если Web Speech не нашёл голоса для языка
  * 3. Google Translate TTS — онлайн-резерв для браузерной версии
  *
  * @module composables/useTts
@@ -247,7 +247,7 @@ export const checkTTSAvailability = async (): Promise<{ available: boolean; mess
  * Стратегия (в порядке приоритета):
  * 1. Кэш (IndexedDB) — если уже синтезировали через Python TTS
  * 2. Web Speech API (WebView2 / браузер) — ноль зависимостей
- * 3. Go IPC (Wails → Python TTS) — если Web Speech не справился
+ * 3. Go IPC (Wails -> Python TTS) — если Web Speech не справился
  * 4. Google Translate TTS — онлайн-резерв
  *
  * @param text - текст для озвучки
@@ -269,7 +269,7 @@ export const speakText = async (text: string, lang: string): Promise<{ audio: st
   const webSpeechOk = await tryWebSpeech(text, lang)
   if (webSpeechOk) return { audio: '', mime: '' }
 
-  // 3. Go IPC (Wails → Python TTS) — если Web Speech не нашёл голос
+  // 3. Go IPC (Wails -> Python TTS) — если Web Speech не нашёл голос
   if (isWails) {
     try {
       const result = await window.go!.main.App.SpeakText(text, lang)

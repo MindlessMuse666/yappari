@@ -159,7 +159,7 @@ func TestCalculate_EF_Floor(t *testing.T) {
 // ---- EF: точные математические значения ----
 
 func TestCalculate_EF_Grade3(t *testing.T) {
-	// Grade 3: EF -= 0.14 (для начального EF=2.5 → 2.36)
+	// Grade 3: EF -= 0.14 (для начального EF=2.5 -> 2.36)
 	now := time.Now()
 	result := Calculate(2.5, 0, 0, 3, now)
 	expectedEF := 2.5 + (0.1 - float64(5-3)*(0.08+float64(5-3)*0.02))
@@ -310,7 +310,7 @@ func TestCalculate_MinEF(t *testing.T) {
 }
 
 func TestCalculate_MinEFWithGrade3(t *testing.T) {
-	// Минимальный EF (1.3) с grade 3: 1.3 - 0.14 = 1.16 → floor 1.3
+	// Минимальный EF (1.3) с grade 3: 1.3 - 0.14 = 1.16 -> floor 1.3
 	now := time.Now()
 	result := Calculate(1.3, 0, 0, 3, now)
 	if !withinTolerance(result.EaseFactor, 1.3, 1e-9) {

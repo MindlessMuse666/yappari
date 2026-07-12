@@ -217,7 +217,7 @@ func Init(appDataDir string) error {
 	modelsDir := filepath.Join(appDataDir, "tts_models")
 
 	// Создаём папки
-	os.MkdirAll(modelsDir, 0755)
+	_ = os.MkdirAll(modelsDir, 0755)
 
 	mgr := &ttsManager{
 		status:     StateUninitialized,
@@ -465,13 +465,13 @@ func Close() error {
 	if m.stdin != nil {
 		req := rpcRequest{Method: "shutdown"}
 		data, _ := json.Marshal(req)
-		fmt.Fprintln(m.stdin, string(data))
+		_, _ = fmt.Fprintln(m.stdin, string(data))
 
 		// Ждём завершения
 		done := make(chan struct{})
 		go func() {
 			if m.cmd != nil {
-				m.cmd.Wait()
+				_ = m.cmd.Wait()
 			}
 			close(done)
 		}()
@@ -482,11 +482,11 @@ func Close() error {
 		case <-time.After(5 * time.Second):
 			log.Println("TTS: принудительное завершение")
 			if m.cmd != nil {
-				m.cmd.Process.Kill()
+				_ = m.cmd.Process.Kill()
 			}
 		}
 
-		m.stdin.Close()
+		_ = m.stdin.Close()
 	}
 
 	// Очищаем pending
@@ -512,12 +512,4 @@ func CheckAvailability() (bool, string) {
 		return true, s.Message
 	}
 	return false, s.Message
-}
-
-// initProgressHook вызывается из main для передачи пути к app data.
-// Временное решение — в будущем app.go будет передавать путь через Init.
-var initHook func()
-
-func init() {
-	initHook = nil
 }

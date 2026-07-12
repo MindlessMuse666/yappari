@@ -287,12 +287,12 @@ defineExpose({ show, confirm })
 /* Анимации */
 .alert-enter-active {
   transition: opacity 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-              backdrop-filter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .alert-leave-active {
   transition: opacity 0.2s ease,
-              backdrop-filter 0.2s ease;
+    backdrop-filter 0.2s ease;
 }
 
 .alert-enter-active .alert-modal {

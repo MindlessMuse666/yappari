@@ -66,13 +66,20 @@ export interface CustomAlertExposed {
 }
 
 /**
- * Глобальная декларация Wails IPC.
+ * Глобальная декларация Wails IPC и Runtime API.
  *
  * Все методы бэкенда, экспортируемые через Wails, доступны
  * через `window.go.main.App.*`.
+ * Runtime API для управления окном — через `window.runtime.*`.
  */
 declare global {
   interface Window {
+    /** Runtime API Wails для управления окном */
+    runtime?: {
+      WindowFullscreen: () => Promise<void>
+      WindowUnfullscreen: () => Promise<void>
+      WindowIsFullscreen: () => Promise<boolean>
+    }
     go: {
       main: {
         App: {

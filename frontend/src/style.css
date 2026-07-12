@@ -1,5 +1,5 @@
 /**
- * Глобальные стили Yappari (тёмная тема).
+ * Глобальные стили Yappari.
  *
  * Определяет:
  * - Подключение шрифтов Inter и Noto Sans JP
@@ -151,6 +151,33 @@ h1, h2, h3 {
 ruby rt {
   font-size: 0.6em;
   color: #c7cdd8;
+}
+
+/* ===== Скроллбар ===== */
+
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+/* WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* ===== PrimeVue-переопределения ===== */

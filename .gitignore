@@ -5,6 +5,7 @@ go.work
 
 # python
 __pycache__/
+.ruff_cache/
 
 # wails
 build/
@@ -33,7 +34,6 @@ frontend/dist/
 vendor/
 *.log
 *.tmp
-.markdownlint.yml
 .*/
 *.md
 

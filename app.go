@@ -25,7 +25,7 @@ func NewApp() *App {
 // startup вызывается Wails при запуске приложения. Инициализирует базу данных.
 // TTS (Python) больше не инициализируется автоматически — используется Web Speech API
 // через WebView2. Python TTS (Kokoro/Silero) будет установлен по запросу пользователя
-// через Settings → "Установить высококачественный TTS".
+// через Settings -> "Установить высококачественный TTS".
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	if err := database.InitDB(); err != nil {

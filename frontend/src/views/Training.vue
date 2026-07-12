@@ -31,24 +31,29 @@
     <!-- Основной контент (после загрузки) -->
     <template v-else>
       <div v-if="currentCard && !isFinished" class="card-container">
-        <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
-          <div class="card-inner">
-            <div class="card-front">
-              <div class="text" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">{{ currentCard.KanjiText }}</div>
-            </div>
-            <div class="card-back">
-              <div class="word-section">
-                <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">
-                  <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
-                </div>
+        <Transition name="card-switch" mode="out-in">
+          <div class="card" :class="{ flipped: showAnswer }" :key="currentCard.ID">
+            <div class="card-inner">
+              <div class="card-front">
+                <div class="text" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakJapaneseOnly">{{
+                  currentCard.KanjiText }}</div>
               </div>
-              <div class="separator"></div>
-              <div class="translation-section">
-                <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }" @click="speakRussianOnly">{{ currentCard.Translation }}</div>
+              <div class="card-back">
+                <div class="word-section">
+                  <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }"
+                    @click="speakJapaneseOnly">
+                    <FuriganaText :KanjiText="currentCard.KanjiText" :FuriganaText="currentCard.FuriganaText" />
+                  </div>
+                </div>
+                <div class="separator"></div>
+                <div class="translation-section">
+                  <div class="text clickable" :class="{ 'tts-disabled': isWails && !ttsAvailable }"
+                    @click="speakRussianOnly">{{ currentCard.Translation }}</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </Transition>
       </div>
 
       <div v-if="!isFinished" class="actions">
@@ -78,7 +83,7 @@
           </template>
           <template v-else>
             <button @click="toggleAutoPlay" class="auto-play-btn secondary-btn" :class="{ active: isAutoPlaying }">
-              {{ isAutoPlaying ? 'Остановить' : 'Авто' }} <kbd class="hotkey-hint">Ctrl W</kbd>
+              {{ isAutoPlaying ? 'Остановить' : 'Авто' }} <kbd class="hotkey-hint">W</kbd>
             </button>
             <template v-if="!isAutoPlaying">
               <button v-if="!showAnswer" @click="showAnswerFn" class="primary-btn large">
@@ -122,7 +127,7 @@
  * @see {@link module:composables/useTts} для озвучки
  */
 
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import ProgressBar from 'primevue/progressbar'
 import FuriganaText from '../components/FuriganaText.vue'
@@ -232,12 +237,15 @@ const goBack = () => {
 /**
  * Обработчик клавиатурных сокращений.
  *
- * - Escape → на главную
- * - Space → показать ответ / далее
- * - 1-4 → оценки SM-2 (интервальный режим)
- * - Ctrl/Cmd+A → авто (свободный режим)
+ * - Escape -> на главную
+ * - Space -> показать ответ / далее
+ * - 1-4 -> оценки SM-2 (интервальный режим)
+ * - W -> авто (свободный режим)
  */
 const onKeydown = (e: KeyboardEvent) => {
+  // Защита от IME-композиции (японский ввод)
+  if (e.isComposing || e.keyCode === 229) return
+
   // Escape — всегда на главную
   if (e.key === 'Escape') {
     e.preventDefault()
@@ -263,12 +271,10 @@ const onKeydown = (e: KeyboardEvent) => {
     return
   }
 
-  // Ctrl/Cmd+W — авто (свободный режим)
-  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyW') {
+  // W — авто (свободный режим)
+  if (e.code === 'KeyW' && mode.value === 'free' && !isFinished.value) {
     e.preventDefault()
-    if (mode.value === 'free' && !isFinished.value) {
-      toggleAutoPlay()
-    }
+    toggleAutoPlay()
     return
   }
 
@@ -299,8 +305,11 @@ const onKeydown = (e: KeyboardEvent) => {
 const showAnswerFn = () => {
   playClickSound()
   showAnswer.value = true
+  // Задержка TTS для совмещения с flip-анимацией (350ms)
   if (currentCard.value) {
-    speakBoth(currentCard.value.KanjiText, currentCard.value.Translation)
+    setTimeout(() => {
+      speakBoth(currentCard.value.KanjiText, currentCard.value.Translation)
+    }, 350)
   }
 }
 
@@ -338,25 +347,11 @@ const submitReview = async (grade: number) => {
   }
 }
 
-/** Переходит к следующей карточке (с задержкой для анимации) */
+/** Переходит к следующей карточке */
 const nextCard = () => {
   playClickSound()
   showAnswer.value = false
-  setTimeout(() => {
-    currentIndex.value++
-    nextTick(() => {
-      if (isFinished.value) {
-        triggerConfetti()
-        try {
-          const audio = new Audio('/audio/training_success_sound.mp3')
-          successSound.value = audio
-          audio.play()
-        } catch {
-          // звук не критичен
-        }
-      }
-    })
-  }, 50)
+  currentIndex.value++
 }
 
 /** Переключает авто-режим */
@@ -369,7 +364,7 @@ const toggleAutoPlay = () => {
   }
 }
 
-/** Запускает авто-режим: вопрос → 2c → ответ + озвучка → 3.5c → далее */
+/** Запускает авто-режим: вопрос -> 2c -> ответ + озвучка -> 3.5c -> далее */
 const startAutoPlay = () => {
   isAutoPlaying.value = true
   processAutoPlayStep()
@@ -409,9 +404,20 @@ watch(showAnswer, () => {
   }
 })
 
-/** При смене карточки в авто-режиме — продолжаем цикл */
+/** При смене карточки: confetti + звук при завершении, авто-режим */
 watch(currentIndex, () => {
-  if (isAutoPlaying.value && !isFinished.value) {
+  if (isFinished.value) {
+    triggerConfetti()
+    try {
+      const audio = new Audio('/audio/training_success_sound.mp3')
+      successSound.value = audio
+      audio.play()
+    } catch {
+      // звук не критичен
+    }
+    return
+  }
+  if (isAutoPlaying.value) {
     if (answerTimer) { clearTimeout(answerTimer); answerTimer = null }
     processAutoPlayStep()
   }
@@ -539,10 +545,13 @@ onUnmounted(() => {
 }
 
 @keyframes loadingGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     border-color: #222222;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   }
+
   50% {
     border-color: #333333;
     box-shadow: 0 10px 40px rgba(255, 10, 20, 0.08), 0 0 60px rgba(255, 10, 20, 0.04);
@@ -580,10 +589,13 @@ onUnmounted(() => {
 }
 
 @keyframes dotPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
+
   50% {
     opacity: 1;
     transform: scale(1);
@@ -598,6 +610,29 @@ onUnmounted(() => {
   letter-spacing: 0.03em;
 }
 
+/* ===== Анимация смены карточки ===== */
+.card-switch-enter-active {
+  animation: cardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-switch-leave-active {
+  animation: cardOut 0.25s ease;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.96);
+  }
+}
+
+@keyframes cardOut {
+  to {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.96);
+  }
+}
+
 /* ===== Карточка тренировки ===== */
 .card-container {
   perspective: 1200px;
@@ -605,7 +640,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
   min-height: 350px;
   width: 100%;
   max-width: 600px;
@@ -624,7 +659,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
   transform-style: preserve-3d;
   will-change: transform;
 }

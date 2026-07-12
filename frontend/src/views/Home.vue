@@ -11,38 +11,97 @@
     <div class="header">
       <img src="/yappari_logo.png" alt="Yappari Logo" class="logo" draggable="false" />
       <h1>Yappari</h1>
+
+      <!-- Профиль-поповер с информацией о приложении -->
+      <div class="profile-section" @mouseenter="showProfilePopover" @mouseleave="hideProfilePopover">
+        <Transition name="profile-icon">
+          <div v-if="!showProfile" key="icon" class="profile-trigger">
+            <svg class="profile-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </div>
+        </Transition>
+        <Transition name="profile-expand">
+          <div v-if="showProfile" key="popover" class="profile-popover" @mouseenter="cancelProfileTimer"
+            @mouseleave="hideProfilePopover">
+            <div class="popover-header">
+              <svg class="popover-avatar" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <div class="popover-user-info">
+                <span class="popover-greeting">Yappari</span>
+                <span class="popover-email">Десктоп-версия v1.2-beta</span>
+              </div>
+            </div>
+            <div class="popover-divider"></div>
+            <div class="popover-app-info">
+              <p class="popover-app-desc">
+                Приложение для удобного изучения японских слов ヾ(＠⌒ー⌒＠)ノ
+              </p>
+            </div>
+            <div class="popover-divider"></div>
+            <a href="https://github.com/MindlessMuse666/yappari" target="_blank" class="popover-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+              </svg>
+              GitHub
+            </a>
+            <button class="popover-link fullscreen-link" @click="toggleFullscreen">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+              </svg>
+              {{ isFullscreen ? 'Оконный режим' : 'Полный экран' }} <kbd class="hotkey-hint">F</kbd>
+            </button>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <div class="actions">
       <button v-if="decks.length > 0" @click="createDeckModalVisible = true" class="primary-btn">
         <span class="icon">+</span>
-        Новая колода <kbd class="hotkey-hint">Ctrl N</kbd>
+        Новая колода <kbd class="hotkey-hint">N</kbd>
       </button>
       <button v-if="decks.length > 0" @click="toggleSelectAll" class="primary-btn select-all-btn">
-        {{ allSelected ? 'Сбросить все' : 'Выбрать все' }}
+        {{ allSelected ? 'Сбросить все' : 'Выбрать все' }} <kbd class="hotkey-hint">A</kbd>
       </button>
     </div>
 
-    <div v-if="decks.length === 0" class="empty-state" @click="createDeckModalVisible = true">
-      <div class="empty-state-icon">
-        <span class="empty-plus">+</span>
-      </div>
-      <h2 class="empty-state-title">У тебя пока нет колод.</h2>
-      <p class="empty-state-subtitle">Создай первую!</p>
+    <!-- Состояние загрузки (показывается пока грузятся колоды) -->
+    <div v-if="isInitialLoading" class="loading-state">
+      <div class="skeleton-deck" v-for="i in 4" :key="i"></div>
     </div>
 
-    <div v-else class="deck-list">
-      <div v-for="deck in decks" :key="deck.ID" class="deck-item">
-        <label class="deck-checkbox-wrapper" :for="`deck-${deck.ID}`">
-          <input type="checkbox" :id="`deck-${deck.ID}`" v-model="selectedDeckIds" :value="deck.ID" />
-          <span class="deck-name">{{ deck.Name }}</span>
-        </label>
-        <button @click.stop="goToDeck(deck.ID)" class="gear-btn" title="Управлять колодой">
-          ⚙️
-        </button>
+    <template v-else>
+      <div v-if="decks.length === 0" class="empty-state" @click="createDeckModalVisible = true">
+        <div class="empty-state-icon">
+          <span class="empty-plus">+</span>
+        </div>
+        <h2 class="empty-state-title">У тебя пока нет колод.</h2>
+        <p class="empty-state-subtitle">Создай первую!</p>
       </div>
-    </div>
 
+      <div v-else class="deck-list">
+        <div v-for="deck in decks" :key="deck.ID" class="deck-item" @click="toggleDeckSelection(deck.ID)">
+          <div class="deck-checkbox-wrapper" @click.stop="toggleDeckSelection(deck.ID)">
+            <input type="checkbox" :checked="selectedDeckIds.includes(deck.ID)" />
+            <span class="deck-name">{{ deck.Name }}</span>
+          </div>
+          <button @click.stop="goToDeck(deck.ID)" class="gear-btn" title="Управлять колодой">⚙️</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Кнопки тренировки — всегда внизу -->
     <div v-if="decks.length > 0" class="training-buttons">
       <!-- Кнопка: Интервальное повторение -->
       <div class="training-btn-wrapper">
@@ -96,7 +155,7 @@
             Название колоды <span class="required-asterisk">*</span>
           </label>
           <InputText id="deck-name" v-model="newDeckName" placeholder="Введите название колоды" class="custom-input"
-            :class="{ 'input-error': errors.deckName }" @keyup.enter="createDeck" />
+            :class="{ 'input-error': errors.deckName }" @keydown.enter="onDeckNameEnter" />
           <div v-if="errors.deckName" class="error">{{ errors.deckName }}</div>
         </div>
       </div>
@@ -134,6 +193,7 @@ const selectedDeckIds = ref<number[]>([])
 const createDeckModalVisible = ref(false)
 const newDeckName = ref('')
 const isLoading = ref(false)
+const isInitialLoading = ref(true)
 const errors = ref({ deckName: '' })
 const shake = ref(false)
 const activePopover = ref<string | null>(null)
@@ -157,6 +217,7 @@ const loadDecks = async () => {
     await alert({ title: 'Ошибка', message: 'Не удалось загрузить колоды: ' + e, isError: true })
   } finally {
     isLoading.value = false
+    isInitialLoading.value = false
   }
 }
 
@@ -180,6 +241,12 @@ const validateForm = (): boolean => {
 const triggerShake = () => {
   shake.value = true
   setTimeout(() => { shake.value = false }, 500)
+}
+
+/** Обработчик Enter на поле ввода с защитой от IME-композиции (японский ввод) */
+const onDeckNameEnter = (e: KeyboardEvent) => {
+  if (e.isComposing || e.keyCode === 229) return
+  createDeck()
 }
 
 /** Создаёт новую колоду */
@@ -228,6 +295,16 @@ const startTraining = (mode: string) => {
   })
 }
 
+/** Переключает выбор колоды при клике на карточку */
+const toggleDeckSelection = (id: number) => {
+  const idx = selectedDeckIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedDeckIds.value.splice(idx, 1)
+  } else {
+    selectedDeckIds.value.push(id)
+  }
+}
+
 /** Выделить / снять выделение со всех колод */
 const toggleSelectAll = () => {
   playClickSound()
@@ -238,12 +315,88 @@ const toggleSelectAll = () => {
   }
 }
 
-/** Ctrl+N — открыть модалку создания колоды */
+/** N — открыть модалку создания колоды, A — выбрать все */
 const onKeydown = (e: KeyboardEvent) => {
-  if ((e.ctrlKey || e.metaKey) && e.code === 'KeyN') {
+  // Игнорируем события во время ввода японского текста (IME composition)
+  if (e.isComposing || e.keyCode === 229) return
+
+  const target = e.target as HTMLElement
+  // Игнорируем хоткеи при вводе в текстовые поля
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    const input = target as HTMLInputElement
+    // Разрешаем хоткеи на чекбоксах (после клика фокус остаётся на чекбоксе)
+    if (input.type !== 'checkbox' && input.type !== 'radio') return
+  }
+
+  if (e.code === 'KeyN' && !createDeckModalVisible.value) {
     e.preventDefault()
     createDeckModalVisible.value = true
   }
+
+  // A — выбрать все / снять выделение
+  if (e.code === 'KeyA' && decks.value.length > 0 && !createDeckModalVisible.value) {
+    e.preventDefault()
+    toggleSelectAll()
+  }
+}
+
+/** Состояние профиль-поповера */
+const showProfile = ref(false)
+let profileTimer: ReturnType<typeof setTimeout> | null = null
+
+const hideProfilePopover = () => {
+  if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
+  profileTimer = setTimeout(() => { showProfile.value = false }, 250)
+}
+
+const cancelProfileTimer = () => {
+  if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
+}
+
+/** Состояние полноэкранного режима */
+const isFullscreen = ref(false)
+
+/** Переключает полноэкранный режим через Wails Runtime API */
+const toggleFullscreen = async () => {
+  try {
+    if (window.runtime) {
+      const isFull = await window.runtime.WindowIsFullscreen()
+      if (isFull) {
+        await window.runtime.WindowUnfullscreen()
+        isFullscreen.value = false
+      } else {
+        await window.runtime.WindowFullscreen()
+        isFullscreen.value = true
+      }
+    } else {
+      // Fallback: браузерный Fullscreen API
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+        isFullscreen.value = false
+      } else {
+        await document.documentElement.requestFullscreen()
+        isFullscreen.value = true
+      }
+    }
+  } catch {
+    // Wails Runtime может быть недоступен — игнорируем
+  }
+}
+
+/** Синхронизируем состояние с document при открытии поповера */
+const showProfilePopover = () => {
+  if (profileTimer) { clearTimeout(profileTimer); profileTimer = null }
+  profileTimer = setTimeout(() => {
+    showProfile.value = true
+    const runtime = window.runtime
+    if (runtime) {
+      runtime.WindowIsFullscreen().then((isFull: boolean) => {
+        isFullscreen.value = isFull
+      })
+    } else {
+      isFullscreen.value = !!document.fullscreenElement
+    }
+  }, 350)
 }
 
 /** Сброс таймера поповера */
@@ -282,6 +435,7 @@ onUnmounted(() => {
 
 /** Блокировка прокрутки колёсиком при открытой модалке создания колоды */
 const preventWheel = (e: WheelEvent) => { e.preventDefault() }
+
 watch(createDeckModalVisible, (open) => {
   if (open) {
     document.addEventListener('wheel', preventWheel, { passive: false })
@@ -301,6 +455,41 @@ watch(selectedDeckIds, (newVal) => {
   padding: 2rem;
   max-width: 800px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ===== Loading skeleton ===== */
+.loading-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton-deck {
+  height: 58px;
+  background: #111111;
+  border: 1px solid #222222;
+  border-radius: 0.75rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
 }
 
 .header {
@@ -308,6 +497,9 @@ watch(selectedDeckIds, (newVal) => {
   align-items: center;
   gap: 1.5rem;
   margin-bottom: 2rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
 }
 
 .logo {
@@ -333,6 +525,8 @@ watch(selectedDeckIds, (newVal) => {
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .empty-state:hover {
@@ -389,10 +583,25 @@ watch(selectedDeckIds, (newVal) => {
 }
 
 .deck-list {
-  margin: 2rem 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding: 0.5rem 0.25rem 0.25rem 0;
+  overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+.deck-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.deck-list::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
 }
 
 .deck-item {
@@ -403,8 +612,8 @@ watch(selectedDeckIds, (newVal) => {
   background-color: #111111;
   border: 1px solid #222222;
   border-radius: 0.75rem;
-  transition: all 0.2s;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .deck-item:hover {
@@ -485,11 +694,195 @@ watch(selectedDeckIds, (newVal) => {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.actions .primary-btn:first-child {
+  min-width: 195px;
 }
 
 .select-all-btn {
   margin-left: auto;
-  min-width: 170px;
+  width: 215px;
+}
+
+/* ===== Профиль ===== */
+.profile-section {
+  position: relative;
+  margin-left: auto;
+  width: 42px;
+  height: 42px;
+  z-index: 10;
+}
+
+.profile-trigger {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #111111;
+  border: 1px solid #333333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  color: #c7cdd8;
+}
+
+.profile-trigger:hover {
+  border-color: #ff0a14;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(255, 10, 20, 0.25);
+}
+
+.profile-icon {
+  display: block;
+}
+
+/* Profile icon: fade out (leaving) */
+.profile-icon-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-icon-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Profile icon: fade in (re-entering) */
+.profile-icon-enter-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profile-icon-enter-from {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Profile popover: expand in */
+.profile-expand-enter-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.profile-expand-enter-from {
+  opacity: 0;
+  transform: scale(0.3);
+  transform-origin: top right;
+}
+
+/* Profile popover: shrink out */
+.profile-expand-leave-active {
+  transition: all 0.15s ease;
+}
+
+.profile-expand-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
+  transform-origin: top right;
+}
+
+.profile-popover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 310px;
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  user-select: none;
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.popover-avatar {
+  flex-shrink: 0;
+  color: #ff0a14;
+  background: rgba(255, 10, 20, 0.08);
+  border-radius: 50%;
+  padding: 4px;
+}
+
+.popover-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.popover-greeting {
+  font-size: 0.8rem;
+  color: #888888;
+  font-weight: 400;
+}
+
+.popover-email {
+  font-size: 0.9rem;
+  color: #ffffff;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-divider {
+  height: 1px;
+  background: #333333;
+  margin: 0.85rem 0;
+}
+
+.popover-app-info {
+  padding: 0;
+}
+
+.popover-app-desc {
+  font-size: 0.85rem;
+  color: #c7cdd8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.popover-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: 1px solid #333333;
+  color: #c7cdd8;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.popover-link:hover {
+  background: #ff0a14;
+  border-color: #ff0a14;
+  color: white;
+}
+
+.fullscreen-link {
+  margin: 0.85rem 0 0 0;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .primary-btn {
@@ -524,6 +917,8 @@ watch(selectedDeckIds, (newVal) => {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  padding-bottom: 0.5rem;
 }
 
 .training-btn-wrapper {
@@ -556,20 +951,20 @@ watch(selectedDeckIds, (newVal) => {
   cursor: not-allowed;
 }
 
-.training-btn:disabled ~ .corner-trigger {
+.training-btn:disabled~.corner-trigger {
   pointer-events: none;
   opacity: 0.35;
   cursor: not-allowed;
 }
 
-.training-btn:disabled ~ .corner-trigger:hover {
+.training-btn:disabled~.corner-trigger:hover {
   background: #1a1a1a;
   border-color: #333333;
   transform: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.training-btn:disabled ~ .corner-trigger:hover .corner-fold {
+.training-btn:disabled~.corner-trigger:hover .corner-fold {
   color: rgba(255, 255, 255, 0.45);
 }
 
